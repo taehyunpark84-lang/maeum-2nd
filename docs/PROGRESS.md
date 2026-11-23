@@ -454,3 +454,40 @@
 - mobile/.env API URL을 https://34.158.202.133으로 변경. 로컬 backend/.env·SQLite·API 키 보존. 실제 AI 키 처리 방식은 사용자 선택 대기, 유료 호출 없음.
 - Expo를 새 설정으로 시작. 휴대폰 실제 가입/로그인/그림 생성은 아직 미검증. 기존 VM MySQL은 새 DB이므로 로컬 계정 자동 이관 없음.
 - 증빙: docs/screenshots/20261122-vm-https.jpg. 관리/자동 갱신 명령은 docs/MAEUM_VM_RUNBOOK.md에 기록.
+
+## 2026-11-22 — Android APK 및 실기기 저장 점검 (진행 중)
+- 사용자 요청으로 갤러리 저장 기능을 점검하고 독립 실행 APK 빌드 시작. USB 연결 Samsung SM-A256N, Android API 36, arm64 확인.
+- 앨범 조회 실패 시 사진첩 저장 경로로 진행하고, 캐시 삭제 실패가 저장 성공/원래 오류를 덮지 않도록 saveArtwork 보완.
+- 권한 거절/인증 다운로드/앨범 제한/다운로드 실패/캐시 정리 오류 테스트 5개 추가. 타입 검사·린트 및 전체 테스트 24개 통과.
+- Expo Android prebuild 완료. Java 21, SDK/Build Tools 37, NDK 27.1 사용. 최초 오프라인 빌드는 캐시에 없는 Spotless 8.1.0으로 중단, 공식 저장소 연결 확인 후 온라인 빌드 재개.
+- scripts/build-test-apk.ps1 및 docs/ANDROID_APK_TEST.md 추가. 현재 APK 생성·설치·휴대폰 MediaStore 저장 확인은 미완료. 서버 변경과 유료 AI 호출 없음.
+- 후속: 온라인 assembleRelease 성공(1시간 6분 55초), output/apk/maeum-2nd-test-arm64.apk 생성(76,118,988바이트). 서명 검증 및 내장 JS/HTTPS 주소 확인. 실제 키 패턴과 .env/DB/개인키 파일 없음.
+- 앱 ID com.taehyun.park.maeum2nd, API 24 이상 arm64, versionCode 1. Expo 템플릿의 debug 서명을 사용하는 release 테스트 APK이며 스토어 배포용 아님.
+- 빌드 완료 후 USB 연결이 해제되어 사용자에게 재연결 요청. 휴대폰 설치·저장 검증 대기.
+- 후속: USB 재연결 후 SM-A256N 설치 확인(versionCode 1, 설치시각 20:27:16), MainActivity 실행 명령 성공. 사용자에게 설치 앱 로그인/기존 작품 저장 요청. 이후 USB 해제되어 추가 기기 조회 불가, 저장 결과 대기.
+- 최종 사용자 증빙: 실기기에서 전용 앨범 저장 완료 메시지 및 별도 그림 파일 첨부 확인. 사용자 제공 증빙 기준으로 사진 저장 성공 확인. USB MediaStore 직접 조회/재실행 후 열람/반복 저장은 미검증으로 구분. 개인 작품과 화면 원본은 Git 관리 파일에 복사하지 않음.
+
+## 2026-11-23 — 생각방 배경·챗봇 이미지 준비
+- 사용자 구상에 따른 신규 탭 이름으로 '생각방' 제안. 이번 작업은 이미지 에셋 준비이며 탭·고민 입력 팝업·역할 배정·턴 진행·중지/재개·사용자 개입·기록 표시 설정은 미구현.
+- 내장 image_gen으로 이미지 생성. 얽힌 흐름과 넓은 아이보리 여백의 세로 배경 1장(948×1659), 같은 외형의 파랑·주황·보라 로봇 프로필 3장(각 1254×1254, RGBA) 준비. 주제마다 역할·이름을 바꿀 수 있도록 텍스트와 고정 입장 제외.
+- 선정 원본 assets/discussion/, 동일 앱용 복사본 mobile/assets/discussion/ 저장. mobile/src/config/assets.ts에 discussionAssets 정적 require 등록. 기존 이미지·목업 보존.
+- assets/discussion/README.md에 사용 방향과 후속 기능 범위, generation-prompts.json에 실제 전체 프롬프트, manifest.json에 크기·투명도·생성 출처 파일명·SHA256 기록.
+- 검증: 생성 결과 시각 확인, PNG 디코딩, 캐릭터 3종 실제 투명 픽셀, 원본/앱 복사본 SHA256 동일 확인. mobile/에서 npm.cmd run typecheck 및 npm.cmd run lint 통과(경고 0). 변경 파일 git diff --check 통과. 새 테스트·번들·APK 빌드는 수행하지 않음.
+- 실제 앱 화면의 가독성·실기기 표시는 미검증. 서버·DB·AI 토론 기능 및 새 APK는 이번 범위에 포함하지 않음.
+
+## 2026-11-23 — 생각방 실제 AI 기능 구현 (운영 서버·설치 APK 반영 전)
+- 사용자 확인으로 기존 서버 확장과 실제 AI 역할 배정·토론까지 범위 확장. Expo Router /discussion 경로와 공간/생각방/갤러리 탐색 연결, 생성한 배경과 3색 프로필 사용.
+- 고민 입력 → 세 관점 소개 → 확인 후 대화 시작. 한 턴은 파랑/주황/보라 각 1회 발언이며 턴 종료 후 수동 이어하기. 중지·재개, 새 고민 취소 시 기존 주제 보존, 새 고민 확정 시 이전 주제 종료 구현.
+- 사용자 의견을 보내면 진행 중 응답을 취소하고 의견을 반영해 이어감. 서버 revision 검사로 의견·새 주제 이전의 늦은 생성 결과 저장 방지. 재시도 요청 중복 방지.
+- 실제 모델은 기존 서버의 AI_MODE/openai 및 TEXT_PROFILES를 사용. 역할은 주제별 배정하고, 직전 발언에 공감·보완·반대·질문으로 응답하도록 구성. 모바일에 AI 키 추가 없음.
+- 계정별 생각방 세션/메시지/표시 설정 분리. 이전 기록 표시 기본 끔, 숨김은 삭제가 아님. 일반 공간의 대화·기억과 분리. 서버 없는 mock 모드용 별도 버전 저장·복원 어댑터 포함.
+- 백엔드 전체 48개 및 최종 신규 9개 테스트 통과. 격리 SQLite g116_discussions upgrade/downgrade/re-upgrade 및 기존 13개 테이블 보존·Alembic check, MySQL DDL 컴파일 통과. 실제 운영 DB/VM에는 아직 적용하지 않음.
+- 모바일 오프라인 어댑터 신규 9개, 진행 제어 초기 6개 테스트 통과. 배경 전환·지연 응답·라우팅 보완 후 전체 검사 중. 기존 Android 에뮬레이터 ADB 승인 대기로 화면 검증 진행 중.
+- 최종 보완: 앱 백그라운드/경로 이탈 시 재생 중지, 늦은 확인/전송 완료의 자동 재개 방지, 홈 화면 Android 뒤로가기 리스너를 포커스 중에만 활성화. 온라인 웹 미리보기의 메모리 인증 토큰 보존.
+- 최종 모바일 테스트 47개 통과. 타입 검사 및 전체 ESLint 경고 0 통과. API 응답 형태·인증 헤더·취소 전파·중복 생성 대기까지 검증.
+- 서버 발언 생성에 DB 리스 추가. 동시 요청은 모델을 중복 호출하지 않고 409/Retry-After로 대기. 오류·취소·연결 종료 시 본인 리스만 해제하고 프로세스 종료 시 만료로 복구. 사용자 의견이 들어오면 revision으로 이전 응답 저장을 거절. 최종 백엔드 전체 51개 통과.
+- 최종 g116 기준 격리 SQLite upgrade/downgrade/re-upgrade 및 Alembic check 통과, 기존 13개 테이블 행·열 보존. MySQL DDL 컴파일 통과, 실제 VM MySQL 적용은 미실시.
+- 실제 모델 gpt-6.1-terra로 합성 취업 고민 검증: 역할 배정 1회 + 발언 4회 총 5회 성공. 세 입장의 연결된 대화와 현실성 우선 의견 반영 확인. 별도 tmp DB 사용, 운영 DB 변경 없음. 비식별 검증 결과 docs/validation/discussion-live-20261123.json, 재현 스크립트 scripts/verify-discussion-live.py.
+- 첫 실제 모델 검사 시 제한 환경의 실행이 진행되지 않아 중단 후 승인된 실행으로 검증 완료. mock 및 최종 API 모드 Android Hermes export 성공(각 1519모듈, 73에셋). 최종 API 번들: tmp/discussion-android-api-export. APK 설치 검증과 구분.
+- 화면 검증 제한: 기존 에뮬레이터 ADB unauthorized, Windows Computer Use list_apps 및 브라우저 미리보기 연결 타임아웃. 기기 데이터/보안 설정을 바꾸지 않았으며 Android/iOS 화면·키보드 확인을 완료로 표시하지 않음.
+- 실제 운영 DB 마이그레이션, Google Cloud 서버 반영, 새 APK 빌드·설치 미실시. 작업자는 검증용 HTTP 서버 시작 승인 중단으로 실행 성공을 확인하지 못했으며 사용한 검증은 격리 API 테스트와 실제 모델 검사다. 실행·반영 안내 docs/THOUGHT_ROOM.md.

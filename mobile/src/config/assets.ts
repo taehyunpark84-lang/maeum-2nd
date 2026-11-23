@@ -85,6 +85,15 @@ export const places = {
   },
 } as const;
 export const diaryArt = require("../../assets/diary/demo-art.png");
+// Prepared for 생각방. Avatar colors identify speakers; roles and names are not fixed.
+export const discussionAssets = {
+  background: require("../../assets/discussion/background-chaos.png"),
+  avatars: {
+    blue: require("../../assets/discussion/bot-blue.png"),
+    amber: require("../../assets/discussion/bot-amber.png"),
+    violet: require("../../assets/discussion/bot-violet.png"),
+  },
+} as const;
 // Bundled loop edits of the user-provided recordings for all six rooms.
 // Other synthetic drafts in assets/audio are intentionally not bundled/referenced.
 export const audioSources: Record<PlaceId, number | null> = {

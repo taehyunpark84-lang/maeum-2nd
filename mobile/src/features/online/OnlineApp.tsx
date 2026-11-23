@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +52,7 @@ import ArtworkImage, { useImageViewport } from "./ArtworkImage";
 import type { PlaceId } from "../../types";
 
 export default function OnlineApp() {
+  const routeParams = useLocalSearchParams<{ tab?: string }>();
   const [historyArt, setHistoryArt] = useState<Artwork | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const galleryScroll = useRef<ScrollViewInstance>(null);
@@ -65,6 +67,12 @@ export default function OnlineApp() {
   );
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<"places" | "gallery">("places");
+  useFocusEffect(
+    useCallback(() => {
+      if (routeParams.tab === "gallery" || routeParams.tab === "places")
+        setTab(routeParams.tab);
+    }, [routeParams.tab]),
+  );
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [selected, setSelected] = useState<PlaceId>("forest");
@@ -159,24 +167,27 @@ export default function OnlineApp() {
     audio.select(id, id ? audioSources[id] : null);
   }, [audio, chat]);
   useEffect(() => () => audio.dispose(), [audio]);
-  useEffect(() => {
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (historyArt) {
-        setHistoryArt(null);
-        return true;
-      }
-      if (art) {
-        setArt(null);
-        return true;
-      }
-      if (tab !== "places" && !chat) {
-        setTab("places");
-        return true;
-      }
-      return false;
-    });
-    return () => sub.remove();
-  }, [art, tab, chat, historyArt]);
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (historyArt) {
+          setHistoryArt(null);
+          return true;
+        }
+        if (art) {
+          setArt(null);
+          return true;
+        }
+        if (tab !== "places" && !chat) {
+          setTab("places");
+          router.setParams({ tab: "places" });
+          return true;
+        }
+        return false;
+      });
+      return () => sub.remove();
+    }, [art, tab, chat, historyArt]),
+  );
 
   async function perform(action: () => Promise<void>) {
     if (actionLock.current) return;
@@ -536,15 +547,21 @@ export default function OnlineApp() {
             <View
               style={[styles.row, { padding: 12, backgroundColor: "#FFFCF7" }]}
             >
-              {(["places", "gallery"] as const).map((value, index) => (
-                <View key={value} style={{ flex: 1 }}>
-                  <Button
-                    label={["공간", "갤러리"][index]}
-                    secondary={tab !== value}
-                    onPress={() => setTab(value)}
-                  />
-                </View>
-              ))}
+              {(["places", "discussion", "gallery"] as const).map(
+                (value, index) => (
+                  <View key={value} style={{ flex: 1 }}>
+                    <Button
+                      label={["공간", "생각방", "갤러리"][index]}
+                      secondary={tab !== value}
+                      onPress={() =>
+                        value === "discussion"
+                          ? router.push("/discussion")
+                          : (setTab(value), router.setParams({ tab: value }))
+                      }
+                    />
+                  </View>
+                ),
+              )}
             </View>
           )}
         </SafeAreaView>

@@ -20,8 +20,10 @@ from . import ai
 from .ai_errors import public_ai_error
 from .config import AI_MODE, DATA, IMAGE_REQUESTS_PER_HOUR
 from .tuning import CHAT_TIMEOUT_SECONDS, SUMMARY_TRIGGER_CHARS, RECENT_MESSAGE_COUNT, SUMMARY_MAX_CHARS, MAX_JOB_ATTEMPTS
+from .discussions import router as discussion_router
 
 app = FastAPI(title='마음이 머무는 곳 API')
+app.include_router(discussion_router)
 UserId = Annotated[str, Depends(current_user)]
 
 class Credentials(BaseModel):

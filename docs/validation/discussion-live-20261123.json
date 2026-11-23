@@ -1,0 +1,81 @@
+{
+  "validatedAt": "2026-11-23",
+  "mode": "openai",
+  "ok": true,
+  "topic": "바로 중소기업에 취업할지 취업 준비를 더 해서 대기업에 도전할지 고민입니다.",
+  "bots": [
+    {
+      "id": "blue",
+      "name": "실무 첫걸음",
+      "position": "중소기업에서 경험 쌓기",
+      "description": "바로 일하며 얻을 실무 경험과 수입을 살펴봅니다. 관심 있는 중소기업의 업무가 앞으로의 진로에 어떤 도움이 될지 묻습니다."
+    },
+    {
+      "id": "amber",
+      "name": "큰 도전",
+      "position": "준비 기간을 갖고 대기업 도전하기",
+      "description": "대기업에서 기대하는 업무와 근무 조건을 짚어봅니다. 준비에 필요한 시간과 비용, 도전할 만한 이유가 무엇인지 묻습니다."
+    },
+    {
+      "id": "violet",
+      "name": "선택 설계자",
+      "position": "두 경로의 조건과 병행 가능성 비교하기",
+      "description": "기업 규모 외에 직무, 성장 기회, 생활 여건 중 무엇이 중요한지 살펴봅니다. 지원을 병행하거나 준비 기간의 기준을 정할 수 있을지 묻습니다."
+    }
+  ],
+  "messages": [
+    {
+      "speaker": "blue",
+      "text": "선택 기준으로 기업 규모보다 맡게 될 업무가 원하는 직무 경험으로 이어지는지 먼저 살펴보면 좋겠어요. 관심 있는 중소기업의 업무가 무엇인지, 그리고 당장 수입이 필요한 상황인지도 함께 생각해 볼까요?",
+      "turn": 1
+    },
+    {
+      "speaker": "amber",
+      "text": "원하는 직무 경험을 기준으로 보자는 의견에 공감해요. 대기업에서도 어떤 업무와 근무 조건을 기대하는지 살펴보고, 도전할 이유가 분명하다면 준비 기간과 그동안 감당할 비용을 정해볼 수 있어요. 관심 있는 대기업 직무나 준비에 쓸 수 있는 기간이 있나요?",
+      "turn": 1
+    },
+    {
+      "speaker": "violet",
+      "text": "두 분이 짚은 직무 경험과 준비 비용을 함께 비교해 보면 좋겠어요. 관심 있는 중소기업과 대기업에 병행 지원하면서, 대기업 준비를 언제까지 이어갈지도 정해볼 수 있어요. 당장 수입이 필요한지, 준비에 어느 정도 시간을 쓸 수 있는지부터 알려주실 수 있나요?",
+      "turn": 1
+    },
+    {
+      "speaker": "user",
+      "text": "지금 생활비가 필요해서 현실성과 당장 실행할 수 있는 방법에 더 비중을 두고 싶어요.",
+      "turn": 2
+    },
+    {
+      "speaker": "blue",
+      "text": "병행 지원도 좋지만, 생활비가 급하다면 우선 빠르게 입사할 수 있는 중소기업 공고부터 살펴보는 쪽에 무게를 두면 좋겠어요. 오늘 희망 직무 공고 몇 개의 급여와 입사 가능 시점을 확인해 볼까요?",
+      "turn": 2
+    }
+  ],
+  "metrics": [
+    {
+      "kind": "discussion_roles",
+      "model": "gpt-6.1-terra",
+      "seconds": 10.07
+    },
+    {
+      "kind": "discussion_reply",
+      "model": "gpt-6.1-terra",
+      "seconds": 2.6
+    },
+    {
+      "kind": "discussion_reply",
+      "model": "gpt-6.1-terra",
+      "seconds": 4.43
+    },
+    {
+      "kind": "discussion_reply",
+      "model": "gpt-6.1-terra",
+      "seconds": 3.04
+    },
+    {
+      "kind": "discussion_reply",
+      "model": "gpt-6.1-terra",
+      "seconds": 2.85
+    }
+  ],
+  "scope": "synthetic example with isolated temporary database; not production deployment or native UI validation"
+}

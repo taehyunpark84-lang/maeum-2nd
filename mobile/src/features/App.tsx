@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
+  Alert,
   BackHandler,
   Image,
   ImageBackground,
@@ -34,6 +37,7 @@ import type { Diary, Post } from "../types";
 import Chat from "./Chat";
 import PlaceCards from "./PlaceCards";
 import DiaryEditor from "./DiaryEditor";
+import { DISCUSSION_LOCAL_KEY } from "./discussion/localService";
 
 type Tab = "places" | "records" | "feed";
 type Modal =
@@ -48,8 +52,15 @@ type Modal =
   | null;
 const date = (value: string) => new Date(value).toLocaleDateString("ko-KR");
 export default function App() {
+  const routeParams = useLocalSearchParams<{ tab?: string }>();
   const { state, update, ready, error, retry } = useStore();
   const [tab, setTab] = useState<Tab>("places");
+  useFocusEffect(
+    useCallback(() => {
+      if (routeParams.tab === "places") setTab("places");
+      if (routeParams.tab === "gallery") setTab("records");
+    }, [routeParams.tab]),
+  );
   const [recordsTab, setRecordsTab] = useState<"diaries" | "sessions">(
     "diaries",
   );
@@ -77,20 +88,23 @@ export default function App() {
     audio.select(audioPlace, audioPlace ? audioSources[audioPlace] : null);
   }, [audio, audioPlace]);
   useEffect(() => () => audio.dispose(), [audio]);
-  useEffect(() => {
-    if (active || editor) return;
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => {
-        if (tab !== "places") {
-          setTab("places");
-          return true;
-        }
-        return false;
-      },
-    );
-    return () => subscription.remove();
-  }, [tab, active, editor]);
+  useFocusEffect(
+    useCallback(() => {
+      if (active || editor) return;
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          if (tab !== "places") {
+            setTab("places");
+            router.setParams({ tab: "places" });
+            return true;
+          }
+          return false;
+        },
+      );
+      return () => subscription.remove();
+    }, [tab, active, editor]),
+  );
   function enter(useDemo = false) {
     const target = useDemo ? "forest" : placeId;
     const s = newSession(target, places[target].greeting, useDemo);
@@ -488,41 +502,55 @@ export default function App() {
           backgroundColor: colors.panel,
         }}
       >
-        {(["places", "records", "feed"] as const).map((key, i) => (
-          <Pressable
-            key={key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === key }}
-            accessibilityLabel={["공간", "내 기록", "공감 피드"][i]}
-            onPress={() => {
-              setTab(key);
-              setNotice("");
-            }}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              padding: 8,
-              minHeight: 56,
-              gap: 4,
-            }}
-          >
-            <Ionicons
-              name={
-                (["leaf-outline", "book-outline", "heart-outline"] as const)[i]
-              }
-              size={22}
-              color={tab === key ? colors.green : colors.muted}
-            />
-            <Text
+        {(["places", "discussion", "records", "feed"] as const).map(
+          (key, i) => (
+            <Pressable
+              key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === key }}
+              accessibilityLabel={["공간", "생각방", "내 기록", "공감 피드"][i]}
+              onPress={() => {
+                if (key === "discussion") {
+                  router.push("/discussion");
+                  return;
+                }
+                setTab(key);
+                router.setParams({ tab: key === "records" ? "gallery" : key });
+                setNotice("");
+              }}
               style={{
-                color: tab === key ? colors.green : colors.muted,
-                fontSize: 12,
+                flex: 1,
+                alignItems: "center",
+                padding: 8,
+                minHeight: 56,
+                gap: 4,
               }}
             >
-              {["공간", "내 기록", "공감 피드"][i]}
-            </Text>
-          </Pressable>
-        ))}
+              <Ionicons
+                name={
+                  (
+                    [
+                      "leaf-outline",
+                      "chatbubbles-outline",
+                      "book-outline",
+                      "heart-outline",
+                    ] as const
+                  )[i]
+                }
+                size={22}
+                color={tab === key ? colors.green : colors.muted}
+              />
+              <Text
+                style={{
+                  color: tab === key ? colors.green : colors.muted,
+                  fontSize: 12,
+                }}
+              >
+                {["공간", "생각방", "내 기록", "공감 피드"][i]}
+              </Text>
+            </Pressable>
+          ),
+        )}
       </View>
       {modal && (
         <Sheet
@@ -638,12 +666,24 @@ export default function App() {
               <Button
                 label="모든 로컬 데이터 삭제"
                 onPress={() => {
-                  update(() => initialState());
-                  setNickname("");
-                  setTab("places");
-                  setModal(null);
-                  setNotice("");
-                  mockConfig.failNext = false;
+                  void (async () => {
+                    try {
+                      await AsyncStorage.removeItem(DISCUSSION_LOCAL_KEY);
+                    } catch {
+                      Alert.alert(
+                        "삭제하지 못했어요",
+                        "생각방 기록을 삭제하지 못했어요. 다시 시도해 주세요.",
+                      );
+                      setModal(null);
+                      return;
+                    }
+                    update(() => initialState());
+                    setNickname("");
+                    setTab("places");
+                    setModal(null);
+                    setNotice("");
+                    mockConfig.failNext = false;
+                  })();
                 }}
               />
               <Button label="취소" secondary onPress={() => setModal(null)} />

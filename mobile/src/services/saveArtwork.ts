@@ -23,7 +23,8 @@ export async function saveArtwork(id: string): Promise<string> {
       headers: authHeaders(),
       idempotent: true,
     });
-    const album = await Album.get("마음이 머무는 곳");
+    // Limited photo access can prevent album lookup while still allowing saves.
+    const album = await Album.get("마음이 머무는 곳").catch(() => null);
     if (album) {
       await Asset.create(file.uri, album);
     } else {
@@ -36,6 +37,11 @@ export async function saveArtwork(id: string): Promise<string> {
     }
     return "사진첩의 ‘마음이 머무는 곳’ 앨범에 그림을 저장했습니다.";
   } finally {
-    if (file.exists) file.delete();
+    // Cache cleanup must not turn a completed gallery save into a failure alert.
+    try {
+      if (file.exists) file.delete();
+    } catch {
+      // The OS can reclaim this temporary cache file later.
+    }
   }
 }

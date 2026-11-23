@@ -149,3 +149,42 @@ class RateBucket(Base):
     count: Mapped[int] = mapped_column(Integer, default=0)
     expires: Mapped[float] = mapped_column(TIME_FLOAT)
 
+
+class DiscussionSession(Base):
+    """생각방은 일반 공간의 원문/공통 기억과 독립된 비공개 기록입니다."""
+    __tablename__ = 'discussion_sessions'
+    __table_args__ = (UniqueConstraint('user_id', 'request_id'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+    request_id: Mapped[str] = mapped_column(String(64))
+    topic: Mapped[str] = mapped_column(Text)
+    bots: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(10), default='draft')
+    next_speaker_index: Mapped[int] = mapped_column(Integer, default=0)
+    completed_turns: Mapped[int] = mapped_column(Integer, default=0)
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    reply_lease_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    reply_lease_until: Mapped[float] = mapped_column(TIME_FLOAT, default=0, server_default='0')
+    created: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+    updated: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+
+
+class DiscussionMessage(Base):
+    __tablename__ = 'discussion_messages'
+    __table_args__ = (UniqueConstraint('session_id', 'request_id'),
+                      UniqueConstraint('session_id', 'sequence'))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    session_id: Mapped[str] = mapped_column(ForeignKey('discussion_sessions.id'), index=True)
+    request_id: Mapped[str] = mapped_column(String(64))
+    sequence: Mapped[int] = mapped_column(Integer)
+    speaker: Mapped[str] = mapped_column(String(10))
+    text: Mapped[str] = mapped_column(Text)
+    turn: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+
+
+class DiscussionSettings(Base):
+    __tablename__ = 'discussion_settings'
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    show_history: Mapped[bool] = mapped_column(Boolean, default=False, server_default='0')
+

@@ -1,0 +1,54 @@
+{
+  "createdAt": "2026-11-23",
+  "feature": "discussion",
+  "proposedTabName": "생각방",
+  "generator": "built-in image_gen.imagegen",
+  "promptFile": "assets/discussion/generation-prompts.json",
+  "status": "assets prepared; feature UI and conversation behavior not implemented",
+  "images": [
+    {
+      "path": "assets/discussion/background-chaos.png",
+      "mobilePath": "mobile/assets/discussion/background-chaos.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "bytes": 1919915,
+      "hasTransparency": false,
+      "sha256": "97034025d1327f5e1df39705e636f2b7bd09bf8624a271181d2b1b5af174a7a2",
+      "source": "exec-09413ac7-8a91-4901-9fc0-34034c51dff8.png"
+    },
+    {
+      "path": "assets/discussion/bot-blue.png",
+      "mobilePath": "mobile/assets/discussion/bot-blue.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 865741,
+      "hasTransparency": true,
+      "sha256": "9efdc6fd63767e7e200153700dcfad096e72d38e5b30d3bff853dc97fceec78c",
+      "source": "exec-e6ebdb27-0e98-487d-af57-2b64be5b7c0e.png"
+    },
+    {
+      "path": "assets/discussion/bot-amber.png",
+      "mobilePath": "mobile/assets/discussion/bot-amber.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 864057,
+      "hasTransparency": true,
+      "sha256": "360d65c4f83a84c07fc97b5eea22a284f72acb557bc8e15cd7121c3affd890fe",
+      "source": "exec-10657ddf-d86e-42fe-9572-c4af256568aa.png"
+    },
+    {
+      "path": "assets/discussion/bot-violet.png",
+      "mobilePath": "mobile/assets/discussion/bot-violet.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 864679,
+      "hasTransparency": true,
+      "sha256": "d435f821ef31e5e0d41193dd70f2103238826404647fa7a432c5f77b39bb77cb",
+      "source": "exec-73903f93-4845-4908-a36c-ac5817dd3d8f.png"
+    }
+  ]
+}
