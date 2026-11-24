@@ -1,4 +1,18 @@
 # 작업 상태
+## 2026-11-24 — 토리·도담 캐릭터 차별화 검토 및 로컬 반영
+
+- 6개 공간의 현재 컨셉/페르소나/프롬프트 전문을 비교하여 토리(forest)와 도담(temple)을 선정. 경쾌한 반말/느린 존댓말, 구체적인 경험의 재미/생각과의 거리로 대비.
+- `docs/persona-review-2026-11-24/`에 선정 근거·평가 계획 작성. `backend/evaluate_personas.py`는 실제 `app.ai.stream_chat` 경로에 합성 대화를 넣고 원문/TXT 조합 프롬프트/JSON 호출 인자/설정/실패를 보존. 사용자 DB 접근과 metrics 쓰기는 차단.
+- 초기 샌드박스 실행은 Windows asyncio 로컬 소켓 초기화에서 멈춰 모델 호출 전 종료. 승인된 샌드박스 밖 실행으로 수정 전 검증 진행. API 키는 출력/복사하지 않음.
+- 실제 `gpt-6.1-terra` / reasoning low / verbosity low / max_output_tokens 2200으로 합성 대화 응답 182개 생성 완료, 모델 호출 오류 0. 원본 46개, 중간안 v1 28개/v2 28개/v3 34개, 최종안 46개. 입력 306,027/출력 8,996/총 315,023 토큰(API usage 기준). 실제 유료 호출이며 금액은 산정하지 않음.
+- 총 7개 시나리오: 작은 즐거움, 실수/자책, 질문·조언·비유 거절/애도, 현실적 도움/짧은 문안, 다른 공간 기록 뒤 정체성, 긴급 위험, 별도 새 주제(운동화). 일부 핵심 사례 독립 재실행. 첫 턴 조건/사용자 발언/모델 설정 동일, 후속 문맥은 각자의 실제 응답을 유지. 블라인드/통계적 품질 검증은 아님.
+- 4차까지 수정. 토리는 가벼운 새 주제 첫 응답의 다람쥐 시점과 직접적인 친구 반응, 도담은 경험/자기평가를 나누는 느린 관점 강화. 중간안의 사용자 반응 추정·화자 혼동·위험물을 들고 있다는 가정 보완. 최종 반복에서 화자 혼동은 관찰되지 않았으나 자책 답변 수렴/표현 반복/작은 시간적 추정 등 남은 한계를 기록.
+- 로컬 `backend/app/prompts/forest.txt`, `temple.txt`, 모바일 두 캐릭터 concept/description/personality 수정. `PROMPT_VERSION=persona-2026-11-24-v4`. 공통/안전 지침, 다른 4개 공간, 그림 기획·생성 및 생각방 프롬프트 유지. 공간 지침을 공유하는 완성 작품 소개 말투에도 간접 영향 있음.
+- `docs/persona-review-2026-11-24/`에 선정 근거, 발견 문제+대화 전문, 모든 버전 프롬프트 전문/diff, 동일 입력 전후 대화 전문, 전체 182응답 및 요청별 조합 프롬프트·모델 인자·토큰·시각 저장. 원본 사용자 대화/DB/키는 기록하지 않음. `render_persona_review.py`로 묶음 생성 및 실제 적용 파일/최종 snapshot/공통 지침/사용자 입력/모델 설정 일치 검증.
+- 검증: backend `.venv/Scripts/python.exe -m pytest -q` 51개 통과, mobile `npm.cmd run typecheck` 및 `npm.cmd run lint` 통과, `git diff --check` 통과. 보고서 비밀키 형태 검색은 일치 없음.
+- VM 배포/서비스 재시작/APK 재빌드·설치/휴대폰 UI/실제 이미지 생성·작품 소개는 미실시. 현재 운영 앱 반영 완료로 보지 않음. 공정한 시연에는 별도 신규 시연 계정 또는 독립 평가 기록 권장(한 계정은 공간 간 과거 대화 공유).
+- 재실행: `cd C:\maeum-2nd\backend` → `.\.venv\Scripts\python.exe -u evaluate_personas.py --version after --only 01_small_joy,03_listen_only` (실제 API 과금). 묶음 재생성: `.\.venv\Scripts\python.exe render_persona_review.py` (API 호출 없음).
+
 ## 2026-11-19 — 다른 노트북에서 데이터 없이 시작하는 이전 지침
 
 - 루트 `NEW_LAPTOP_START.md` 작성: 복사 제외/유지 목록과 새 노트북 Codex에 입력할 프롬프트 제공.

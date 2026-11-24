@@ -1,0 +1,11 @@
+{
+  "responses": 182,
+  "usage": {
+    "input_tokens": 306027,
+    "output_tokens": 8996,
+    "total_tokens": 315023
+  },
+  "source_matches_final_snapshot": true,
+  "common_unchanged": true,
+  "same_model_settings_and_user_turns": true
+}

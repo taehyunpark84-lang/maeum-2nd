@@ -1,0 +1,13 @@
+평가 시작 단계 환경 장애 — 2026-11-24
+
+초기 샌드박스 내 실행에서 Python asyncio 이벤트 루프가 시작되지 않아 출력과 기록 폴더 생성 전에 정지.
+진단용 faulthandler의 실제 스택 요지:
+socket.py accept → _fallback_socketpair → asyncio/proactor_events.py _make_self_pipe
+→ asyncio/windows_events.py __init__ → asyncio/runners.py run
+→ evaluate_personas.py main 진입 전.
+
+모델 요청이나 응답은 발생하지 않은 단계이며 대화 원문도 없음.
+정지된 평가/진단 프로세스를 Ctrl+C로 종료.
+로컬 소켓 초기화의 샌드박스 제한으로 판단하여 승인된 샌드박스 밖 실행으로 재시도.
+이후 실제 평가가 정상 완료되어 run 폴더에 원문을 저장함.
+API 오류/부분 응답은 각 run이 별도 기록하도록 구현. 이번 완료된 모델 호출의 오류 수는 실행정보 파일 참고.

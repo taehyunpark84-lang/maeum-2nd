@@ -6,7 +6,7 @@ import os
 
 TEXT_MODEL = os.getenv('TEXT_MODEL', 'gpt-6.1-terra')
 IMAGE_MODEL = os.getenv('IMAGE_MODEL', 'gpt-image-2.6-flare')
-PROMPT_VERSION = 'pdf-2026-11-16-v1'
+PROMPT_VERSION = 'persona-2026-11-24-v4'
 TEXT_PROFILES = {
     # max_output_tokens에는 추론 토큰도 포함되므로 너무 낮게 지정하지 마세요.
     'chat': {'model': TEXT_MODEL, 'reasoning': {'effort': 'low'}, 'text': {'verbosity': 'low'}, 'max_output_tokens': 2200},

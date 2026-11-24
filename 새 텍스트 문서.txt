@@ -1,0 +1,59 @@
+sudo systemctl restart maeum-api maeum-worker
+
+curl -fsS https://34.158.202.133/health
+
+cd C:\maeum-2nd\mobile
+npm.cmd start -- --clear
+
+
+
+휴대폰과 Expo 노트북도 서로 다른 Wi-Fi라면 Expo를 터널 모드로 실행하세요.
+cd C:\maeum-2nd\mobile
+npx expo start --tunnel
+
+
+
+
+
+
+
+1단계: 안전하게 중지하기 (비용 절감 모드):  내부 서비스 → 가상머신(VM) 순서로 끕니다.
+
+백엔드 서비스 및 워커 중지 (SSH 터미널)
+SSH 창에 접속한 상태에서 아래 명령어를 입력해 작업 중인 프로세스를 정상 종료합니다.
+sudo systemctl stop maeum-api maeum-worker
+
+
+정상 종료 확인 (선택 사항)
+래 명령어를 입력했을 때 두 서비스 모두 inactive (dead)로 표시되면 안전하게 꺼진 것입니다.
+sudo systemctl status maeum-api maeum-worker
+
+3. 가상머신(VM) 인스턴스 전원 끄기 (요금 과금 중지)
+	• 방법 A (웹 콘솔 이용): Google Cloud Console의 [Compute Engine] → [VM 인스턴스]에서 해당 인스턴스 우측 점 3개(⋮)를 누르고 [중지]를 클릭합니다.
+	• 방법 B (SSH에서 바로 끄기): 아래 명령어를 입력하면 SSH 연결이 끊기면서 VM이 안전하게 종료됩니다.
+        sudo shutdown -h now
+
+
+
+
+2단계: 다시 안전하게 재개하기 (개발 및 테스트 복귀)
+
+다시 서버를 사용할 때는 반대로 가상머신(VM) 전원 켜기 → 서비스 동작 확인 순서로 진행합니다.
+1. 가상머신(VM) 인스턴스 시작
+	• Google Cloud Console의 [Compute Engine] → [VM 인스턴스]로 이동합니다.
+	• 중지된 인스턴스 우측 점 3개(⋮)를 누르고 [시작]을 클릭합니다.
+	• 상태 아이콘이 초록색 체크(✔) 표시로 바뀔 때까지 약 30초~1분 정도 기다립니다.
+
+2. SSH 접속 및 서비스 실행
+	• 콘솔의 [SSH] 버튼을 눌러 터미널에 접속합니다.
+	• 아래 명령어를 입력해 백엔드 API와 워커를 가동합니다. (systemd에 자동 시작(enable)이 설정되어 있더라도 한 번 더 실행해 주면 확실합니다.)
+sudo systemctl start maeum-api maeum-worker
+
+3. 정상 가동 확인
+	• 아래 명령어를 입력해 두 서비스 모두 초록색 글씨로 active (running) 상태인지 확인합니다.
+sudo systemctl status maeum-api maeum-worker
+
+
+
+
+DB 이름(maeum_db), 계정(maeum_user), 비밀번호(maeum1234!),

@@ -1,0 +1,37 @@
+{
+  "started_kst": "2026-11-24T11:35:51.603885+09:00",
+  "version": "candidate_v3",
+  "model_settings": {
+    "model": "gpt-6.1-terra",
+    "reasoning": {
+      "effort": "low"
+    },
+    "text": {
+      "verbosity": "low"
+    },
+    "max_output_tokens": 2200
+  },
+  "configured_ai_mode": "openai",
+  "evaluation_ai_mode": "openai",
+  "gender": "female",
+  "cases": [
+    "01_small_joy",
+    "02_self_blame",
+    "03_listen_only",
+    "04_practical",
+    "05_identity",
+    "06_immediate_danger",
+    "07_new_topic"
+  ],
+  "repeat": 1,
+  "method": "app.ai.stream_chat; DB/metrics bypass; synthetic inputs; fresh history per case; store=False",
+  "limitations": "SDK/server chat function evaluation, not app UI or deployed server; no fixed random seed",
+  "prompt_sha256": {
+    "common.txt": "319311ebec253bf2b7810a535b8f463eac045117efdd777795350e046c971dc2",
+    "forest.txt": "808e65f1515dfe6105a106890f6614882b48cd52b1181673b4d926c79f679ae5",
+    "temple.txt": "82e72a1dfd8079970ddc8744c602ffa548d4c842470dac855a7de81c2f4877b8"
+  },
+  "completed": 34,
+  "failed": 0,
+  "finished_kst": "2026-11-24T11:36:38.894619+09:00"
+}
