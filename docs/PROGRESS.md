@@ -491,3 +491,10 @@
 - 첫 실제 모델 검사 시 제한 환경의 실행이 진행되지 않아 중단 후 승인된 실행으로 검증 완료. mock 및 최종 API 모드 Android Hermes export 성공(각 1519모듈, 73에셋). 최종 API 번들: tmp/discussion-android-api-export. APK 설치 검증과 구분.
 - 화면 검증 제한: 기존 에뮬레이터 ADB unauthorized, Windows Computer Use list_apps 및 브라우저 미리보기 연결 타임아웃. 기기 데이터/보안 설정을 바꾸지 않았으며 Android/iOS 화면·키보드 확인을 완료로 표시하지 않음.
 - 실제 운영 DB 마이그레이션, Google Cloud 서버 반영, 새 APK 빌드·설치 미실시. 작업자는 검증용 HTTP 서버 시작 승인 중단으로 실행 성공을 확인하지 못했으며 사용한 검증은 격리 API 테스트와 실제 모델 검사다. 실행·반영 안내 docs/THOUGHT_ROOM.md.
+
+## 2026-11-24 — 설치용 앱 아이콘 추가
+- 사용자 요청에 따라 내장 image_gen으로 아이보리 바탕에 초록 잎 두 장이 금빛 하트를 감싸는 아이콘 생성. mobile/assets/app-icon/maeum-icon.png에 저장(1254×1254, 불투명 RGB PNG). 실제 전체 프롬프트와 생성 도구는 같은 폴더 generation.json에 기록.
+- mobile/app.json의 expo.icon, ios.icon, android.adaptiveIcon.foregroundImage 연결. Android 배경색 #F7F4ED 적용, Expo 기본 backgroundImage/monochromeImage 참조 제거. 기존 원본 이미지 보존. 별도 단색 테마 아이콘은 제공하지 않음.
+- Expo SDK 58 공식 설정 문서 확인. 기존 scripts/build-test-apk.ps1에 prebuild 단계가 포함되어 있음 확인. docs/ANDROID_APK_TEST.md에 Gradle 직접 빌드 시 선행 prebuild 필요사항 기록.
+- 검증: 생성 결과 시각 확인, Expo getConfig로 실제 경로 해석 확인, PNG 헤더·정사각형 크기·Pillow 전체 디코딩·불투명 RGB 확인. 초기 sharp 디코딩 시도는 모듈 미설치로 실패하여 기존 Pillow로 대체 검증. npm.cmd run typecheck 및 npm.cmd run lint 성공(경고 0), git diff --check 통과.
+- APK 빌드·휴대폰 설치·런처 표시·iOS 빌드는 미실시. 서버/Google Cloud 업로드 없음. 사용자가 기존 빌드 스크립트로 새 APK를 만든 후 업데이트 설치하여 표시를 확인할 예정.

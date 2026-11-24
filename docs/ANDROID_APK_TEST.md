@@ -11,6 +11,12 @@ cd C:\maeum-2nd
 
 캐시에 없는 의존성이 있으면 -Offline을 빼고 실행합니다. 다른 PC는 -JavaHome과 -AndroidSdk를 지정하고 mobile에서 npm ci를 먼저 실행합니다.
 
+### 앱 아이콘 변경 (2026-11-24)
+
+`mobile/assets/app-icon/maeum-icon.png`를 `mobile/app.json`의 공통/iOS 아이콘 및 Android adaptive icon에 연결했습니다. 위 빌드 스크립트는 매번 `expo prebuild --platform android --no-install`을 실행하므로 변경된 아이콘도 네이티브 리소스에 반영합니다. 기존 `mobile/android`에서 Gradle만 직접 실행할 경우 먼저 이 prebuild 명령을 `mobile/`에서 실행하세요. 새 아이콘의 휴대폰 표시는 새 APK 빌드·업데이트 설치 후 확인해야 합니다.
+
+설정 기준: [Expo SDK 58 앱 설정](https://docs.expo.dev/versions/v58.0.0/config/app/). 생성 도구는 내장 `image_gen`이며 실제 전체 프롬프트는 `mobile/assets/app-icon/generation.json`에 보관했습니다.
+
 결과: output/apk/maeum-2nd-test-arm64.apk. arm64 기기용으로 JS와 자산을 포함한 release 빌드입니다. Expo 템플릿의 debug 서명을 사용하는 테스트용이며 스토어 배포용 서명이 아닙니다. 앱 ID: com.taehyun.park.maeum2nd.
 
 mobile/.env의 EXPO_PUBLIC_API_URL=https://34.158.202.133, EXPO_PUBLIC_APP_MODE=api를 사용합니다. backend/.env는 APK에 포함하지 않습니다. 실제 AI 모드는 VM 설정을 따릅니다.
