@@ -13,6 +13,7 @@ from .db import Db, User, Login, Conversation, Message, ChatLock, Job, ActiveJob
 from .security import current_user, hash_password, verify_password, token_hash
 from .limits import limit
 from .art_story import prepare_story
+from .art_text import clean_art_story
 from .chat_text import clean_reply, public_chunks
 from .thumbnails import thumbnail_for
 from .shared_history import message_query, places_by_session, context_items, acquire_turn, release_turn
@@ -268,7 +269,8 @@ async def preview(session_id: str, user: UserId):
 
 @app.post('/jobs',status_code=202)
 def create_job(body: JobInput,user: UserId):
-    if not body.approved_summary.strip():
+    approved_story = clean_art_story(body.approved_summary)
+    if not approved_story:
         raise HTTPException(422,'확인한 내용을 입력해 주세요.')
     with Db() as db:
         owned(db,Conversation,body.session_id,user)
@@ -284,7 +286,7 @@ def create_job(body: JobInput,user: UserId):
             through = snapshot.source_through
             source_after, source_end = snapshot.source_after, snapshot.source_end
         row = Job(id=uid(),user_id=user,session_id=body.session_id,request_id=body.request_id,
-            approved_summary=body.approved_summary.strip(), source_through=through,
+            approved_summary=approved_story, source_through=through,
             source_after=source_after, source_end=source_end, gender_snapshot=db.get(User, user).gender)
         try:
             db.add(row)
