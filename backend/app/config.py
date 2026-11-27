@@ -16,3 +16,9 @@ API_KEY = os.getenv('OPENAI_API_KEY', '')
 # 사용자별 시간당 접수 한도. 운영 기본값은 10, 개발 시 .env에서 조절합니다.
 IMAGE_REQUESTS_PER_HOUR = max(1, int(os.getenv('IMAGE_REQUESTS_PER_HOUR', '10')))
 
+# Optional local model; unavailable/uncertain results never block artwork creation.
+EMOTION_URL = os.getenv('EMOTION_URL', 'http://127.0.0.1:8001')
+EMOTION_TIMEOUT = float(os.getenv('EMOTION_TIMEOUT', '8'))
+EMOTION_MIN_CONFIDENCE = float(os.getenv('EMOTION_MIN_CONFIDENCE', '0.7'))
+EMOTION_ART_HINT = os.getenv('EMOTION_ART_HINT', '1') == '1'
+

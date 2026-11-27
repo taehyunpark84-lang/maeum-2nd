@@ -10,6 +10,9 @@ build/
 .DS_Store
 /tmp/
 backend/.venv/
+scripts/emotion_server/.venv/
+scripts/emotion_server/koelectra_emotion6_multi_best/model.safetensors
+scripts/emotion_server/koelectra_emotion6_multi_best/training_args.bin
 backend/.runtime/
 backend/storage/
 __pycache__/

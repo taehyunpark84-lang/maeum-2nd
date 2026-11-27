@@ -43,16 +43,24 @@ import {
   type OnlineSession,
 } from "../../services/api";
 import { saveArtwork } from "../../services/saveArtwork";
+import { publicationInput } from "../../services/publication";
 import PlaceCards from "../PlaceCards";
 import AuthScreen from "./AuthScreen";
 import OnlineChat from "./OnlineChat";
 import ArtworkHistory from "./ArtworkHistory";
+import CommunityFeed from "./CommunityFeed";
+import Counseling from "./Counseling";
 import JobStatus from "./JobStatus";
 import ArtworkImage, { useImageViewport } from "./ArtworkImage";
 import type { PlaceId } from "../../types";
 
 export default function OnlineApp() {
   const routeParams = useLocalSearchParams<{ tab?: string }>();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareTitle, setShareTitle] = useState("");
+  const [shareCaption, setShareCaption] = useState("");
+  const [shareAnonymous, setShareAnonymous] = useState(true);
+  const [feedVersion, setFeedVersion] = useState(0);
   const [historyArt, setHistoryArt] = useState<Artwork | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const galleryScroll = useRef<ScrollViewInstance>(null);
@@ -66,10 +74,17 @@ export default function OnlineApp() {
     [account?.id],
   );
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<"places" | "gallery">("places");
+  const [tab, setTab] = useState<"places" | "feed" | "counseling" | "gallery">(
+    "places",
+  );
   useFocusEffect(
     useCallback(() => {
-      if (routeParams.tab === "gallery" || routeParams.tab === "places")
+      if (
+        routeParams.tab === "gallery" ||
+        routeParams.tab === "places" ||
+        routeParams.tab === "feed" ||
+        routeParams.tab === "counseling"
+      )
         setTab(routeParams.tab);
     }, [routeParams.tab]),
   );
@@ -275,6 +290,32 @@ export default function OnlineApp() {
         <Copy>보관함을 열고 있어요…</Copy>
       </SafeAreaView>
     );
+  async function publishArtwork() {
+    if (!art) return;
+    if (!shareTitle.trim()) {
+      Alert.alert(
+        "제목을 입력해 주세요",
+        "작품 피드에 표시할 제목이 필요해요.",
+      );
+      return;
+    }
+    await perform(async () => {
+      await api(
+        "/posts",
+        "POST",
+        publicationInput(art, {
+          title: shareTitle,
+          caption: shareCaption,
+          anonymous: shareAnonymous,
+        }),
+      );
+      setShareOpen(false);
+      setArt(null);
+      setFeedVersion((value) => value + 1);
+      setTab("feed");
+    });
+  }
+
   if (!account)
     return (
       <AuthScreen
@@ -389,6 +430,17 @@ export default function OnlineApp() {
                 </Text>
                 <Copy muted>{art.interpretation}</Copy>
                 <Button
+                  label="작품 피드에 공유하기"
+                  icon="share-social-outline"
+                  disabled={busy}
+                  onPress={() => {
+                    setShareTitle(art.title);
+                    setShareCaption("");
+                    setShareAnonymous(true);
+                    setShareOpen(true);
+                  }}
+                />
+                <Button
                   label={busy ? "저장 중…" : "사진첩에 그림 저장"}
                   disabled={busy}
                   onPress={() =>
@@ -434,6 +486,19 @@ export default function OnlineApp() {
                     />
                     {busy && <ActivityIndicator />}
                   </>
+                )}
+                {tab === "feed" && (
+                  <CommunityFeed
+                    key={`${imageScope}-${feedVersion}`}
+                    imageScope={imageScope}
+                  />
+                )}
+                {tab === "counseling" && (
+                  <Counseling
+                    artworks={artworks}
+                    imageScope={imageScope}
+                    onBack={() => setTab("places")}
+                  />
                 )}
                 {tab === "gallery" && (
                   <>
@@ -545,23 +610,72 @@ export default function OnlineApp() {
           </ScrollView>
           {!art && (
             <View
-              style={[styles.row, { padding: 12, backgroundColor: "#FFFCF7" }]}
+              style={[
+                styles.row,
+                {
+                  paddingHorizontal: 4,
+                  paddingVertical: 8,
+                  gap: 0,
+                  backgroundColor: "#FFFCF7",
+                },
+              ]}
             >
-              {(["places", "discussion", "gallery"] as const).map(
-                (value, index) => (
-                  <View key={value} style={{ flex: 1 }}>
-                    <Button
-                      label={["공간", "마음", "갤러리"][index]}
-                      secondary={tab !== value}
-                      onPress={() =>
-                        value === "discussion"
-                          ? router.push("/discussion")
-                          : (setTab(value), router.setParams({ tab: value }))
-                      }
-                    />
-                  </View>
-                ),
-              )}
+              {(
+                [
+                  "places",
+                  "discussion",
+                  "feed",
+                  "counseling",
+                  "gallery",
+                ] as const
+              ).map((value, index) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="tab"
+                  accessibilityLabel={
+                    ["공간", "마음", "작품 피드", "상담", "갤러리"][index]
+                  }
+                  accessibilityState={{ selected: tab === value }}
+                  style={{
+                    flex: 1,
+                    minHeight: 56,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                  }}
+                  onPress={() =>
+                    value === "discussion"
+                      ? router.push("/discussion")
+                      : (setTab(value), router.setParams({ tab: value }))
+                  }
+                >
+                  <Ionicons
+                    name={
+                      (
+                        [
+                          "leaf-outline",
+                          "chatbubbles-outline",
+                          "heart-outline",
+                          "people-outline",
+                          "images-outline",
+                        ] as const
+                      )[index]
+                    }
+                    size={23}
+                    color={tab === value ? "#526E46" : "#687168"}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: tab === value ? "#526E46" : "#687168",
+                      fontWeight: tab === value ? "700" : "400",
+                      textAlign: "center",
+                    }}
+                  >
+                    {["공간", "마음", "작품 피드", "상담", "갤러리"][index]}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           )}
         </SafeAreaView>
@@ -577,6 +691,72 @@ export default function OnlineApp() {
           <ActivityIndicator />
           <Copy>그림일기를 위한 대화 요약을 준비하고 있어요…</Copy>
         </View>
+      )}
+      {shareOpen && art && (
+        <Sheet
+          title="작품 소개하기"
+          onClose={() => {
+            if (!busy) setShareOpen(false);
+          }}
+        >
+          <Copy>
+            작품을 작품 피드에 공유할 수 있어요. 공개한 작품은 다른 회원에게
+            보입니다.
+          </Copy>
+          <Copy muted>
+            그림과 아래 제목·설명만 공개합니다. 원본 대화·시·해석은 공유하지
+            않습니다. 선택하지 않은 작품은 비공개로 유지됩니다.
+          </Copy>
+          <View
+            style={{
+              alignItems: "center",
+              padding: 12,
+              backgroundColor: "#F0EDE4",
+              borderRadius: 18,
+            }}
+          >
+            <ArtworkImage
+              id={art.id}
+              scope={imageScope}
+              style={{ width: 180, aspectRatio: 2 / 3 }}
+            />
+          </View>
+          <Field
+            label="제목"
+            value={shareTitle}
+            onChangeText={setShareTitle}
+            maxLength={160}
+            placeholder="작품 제목을 적어 주세요"
+          />
+          <Field
+            label="추가 내용 · 선택"
+            value={shareCaption}
+            onChangeText={setShareCaption}
+            maxLength={1200}
+            multiline
+            placeholder="작품에 담긴 마음을 소개해 보세요. 비워 두면 그림만 올라가요."
+          />
+          <View style={{ gap: 8 }}>
+            <Copy>작성자 표시</Copy>
+            <View style={[styles.row, { flexWrap: "wrap" }]}>
+              <Button
+                label="익명으로"
+                secondary={!shareAnonymous}
+                onPress={() => setShareAnonymous(true)}
+              />
+              <Button
+                label={account?.nickname ?? "닉네임"}
+                secondary={shareAnonymous}
+                onPress={() => setShareAnonymous(false)}
+              />
+            </View>
+          </View>
+          <Button
+            label={busy ? "공유하는 중…" : "작품 공유하기"}
+            disabled={busy || !shareTitle.trim()}
+            onPress={() => void publishArtwork()}
+          />
+        </Sheet>
       )}
       {preview && (
         <Sheet

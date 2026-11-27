@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('api', 'worker', 'mobile')]
+    [ValidateSet('api', 'worker', 'mobile', 'emotion')]
     [string]$Service,
     [string]$NodeHome = "$env:LOCALAPPDATA/Author Software/nvm/installs/v24.21.0"
 )
@@ -8,9 +8,18 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $previousPath = $env:Path
 $previousPackagerHost = $env:REACT_NATIVE_PACKAGER_HOSTNAME
+$previousModelDirectory = $env:MODEL_DIR
 Push-Location $projectRoot
 try {
-    if ($Service -eq 'mobile') {
+    if ($Service -eq 'emotion') {
+        Set-Location scripts/emotion_server
+        if (-not (Test-Path '.venv/Scripts/python.exe') -or
+            -not (Test-Path 'koelectra_emotion6_multi_best/model.safetensors')) {
+            throw 'Prepare the isolated emotion environment and model. See docs/TEAM_INTEGRATION.md.'
+        }
+        $env:MODEL_DIR = (Resolve-Path 'koelectra_emotion6_multi_best').Path
+        & ./.venv/Scripts/python.exe -m uvicorn app:app --host 127.0.0.1 --port 8001
+    } elseif ($Service -eq 'mobile') {
         if (-not (Test-Path 'mobile/.env')) { throw 'Prepare mobile/.env first. See docs/LOCAL_DEVELOPMENT.md.' }
         $mobileEnv = Get-Content 'mobile/.env' -Raw
         if ($mobileEnv -notmatch '(?m)^EXPO_PUBLIC_LOCAL_DEVELOPMENT=1\r?$') {
@@ -46,4 +55,5 @@ try {
     Pop-Location
     $env:Path = $previousPath
     $env:REACT_NATIVE_PACKAGER_HOSTNAME = $previousPackagerHost
+    $env:MODEL_DIR = $previousModelDirectory
 }

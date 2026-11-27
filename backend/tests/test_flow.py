@@ -104,12 +104,15 @@ def test_failure_retry_and_chat_lock(monkeypatch):
     asyncio.run(process(*claim_job()))
     assert len(client.get('/diaries',headers=a).json())==1
 
-def test_prompts_preserve_pdf_examples():
+def test_place_prompts_keep_common_preferences_and_safety():
     from app.ai import PLACES,chat_instructions
     for place in PLACES:
         prompt=chat_instructions(place)
-        assert '예시 A' in prompt and '예시 B' in prompt
-        assert '질문은 필요한 경우에만' in prompt
+        if place not in ('ocean', 'temple'):
+            assert '예시 A' in prompt and '예시 B' in prompt
+        assert '개방형 질문' in prompt
+        assert '사용자가 조언이나 질문을 원하지 않으면' in prompt
+        assert '위험한 상황에서는 캐릭터 놀이보다 사용자의 안전을 우선한다' in prompt
 
 
 def test_artwork_delivery_waits_for_turn_and_is_private_and_idempotent():
