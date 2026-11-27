@@ -1,7 +1,75 @@
-import type { DiscussionBot, DiscussionSession, PanelId } from "./types";
+import type {
+  DiscussionBot,
+  DiscussionMessage,
+  DiscussionSession,
+  PanelId,
+} from "./types";
 
 export const PANEL_IDS: PanelId[] = ["sadness", "anxiety", "anger", "joy"];
 export const COUNCIL_STEPS = 11;
+export function canAnswerCouncil(session: DiscussionSession | null) {
+  return (
+    !!session &&
+    session.state === "active" &&
+    session.next_speaker_index === COUNCIL_STEPS &&
+    session.phase === "awaiting_user"
+  );
+}
+export function annotateCouncilMessages(
+  messages: DiscussionMessage[],
+): DiscussionMessage[] {
+  let cursor = 0;
+  let turn = -1;
+  return messages.map((message) => {
+    if (message.turn !== turn) {
+      cursor = 0;
+      turn = message.turn;
+    }
+    if (message.speaker === "user") {
+      cursor = 0;
+      return { ...message, phase: "user" };
+    }
+    const step = councilStep({
+      next_speaker_index: cursor++,
+      completed_turns: turn - 1,
+    });
+    return {
+      ...message,
+      phase:
+        step.speaker === message.speaker && step.phase !== "awaiting_user"
+          ? step.phase
+          : undefined,
+    };
+  });
+}
+export type CouncilTranscriptRow = {
+  id: string;
+  phase: DiscussionMessage["phase"];
+  turn: number;
+  messages: DiscussionMessage[];
+};
+export function councilTranscript(
+  messages: DiscussionMessage[],
+): CouncilTranscriptRow[] {
+  const rows: CouncilTranscriptRow[] = [];
+  for (const message of annotateCouncilMessages(messages)) {
+    const previous = rows.at(-1);
+    if (
+      (message.phase === "first_opinion" || message.phase === "debate") &&
+      previous?.phase === message.phase &&
+      previous.turn === message.turn
+    )
+      previous.messages.push(message);
+    else
+      rows.push({
+        id: message.id,
+        phase: message.phase,
+        turn: message.turn,
+        messages: [message],
+      });
+  }
+  return rows;
+}
 export const PANELS: DiscussionBot[] = [
   {
     id: "sadness",
@@ -71,19 +139,19 @@ export function councilDemoReply(session: DiscussionSession) {
     return (
       "[시연] " +
       [
-        "해결하기 전에 아픈 마음부터 알아줘야 해.",
-        "잠깐, 좋아질 거라는 근거부터 확인해야 해.",
-        "걱정만 할 게 아니라 판단의 기준부터 세워야지.",
-        "위험만 보다가 작은 가능성까지 놓치진 말자.",
+        "기쁨아, 바로 바꾸자고 하면 오히려 부담스럽지 않을까?",
+        "슬픔아, 마음만 보다가 원인을 놓칠 수도 있어.",
+        "불안아, 위험만 따지다가 판단의 모순을 덮어선 안 돼.",
+        "분노야, 다그치기만 하면 작은 시도도 어려워질 수 있어.",
       ][index]
     );
   return (
     "[시연] " +
     [
-      "마음이 많이 속상했겠어. 지금 느끼는 감정부터 천천히 알아보자.",
-      "잠깐, 놓친 조건이 있을 수 있어. 지속 기간과 감당할 범위를 먼저 확인하자.",
-      "네 기준과 실제 행동이 다르다면 그 모순부터 확인해야 해. 핑계로 덮진 말자.",
-      "남아 있는 힘도 있을 거야. 오늘 할 수 있는 작은 시도 하나를 찾아보자.",
+      "마음이 많이 속상했겠어.\n지금 느끼는 감정부터 천천히 알아보자.",
+      "잠깐, 놓친 조건이 있을 수 있어.\n지속 기간과 감당할 범위를 먼저 확인하자.",
+      "네 기준과 실제 행동이 다르다면 그 모순부터 확인해야 해.\n핑계로 덮진 말자.",
+      "남아 있는 힘도 있을 거야.\n오늘 할 수 있는 작은 시도 하나를 찾아보자.",
     ][index]
   );
 }

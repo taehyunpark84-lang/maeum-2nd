@@ -80,6 +80,7 @@ def session_json(db, row):
             'next_speaker_index':row.next_speaker_index, 'completed_turns':row.completed_turns,
             'revision':row.revision, 'state':row.state}
     if row.protocol_version == 2:
+        result['messages'] = mind_council.annotate_messages(result['messages'])
         result.update(protocol_version=2, phase=mind_council.step(row)[1])
     return result
 
@@ -215,6 +216,8 @@ def add_message(session_id: str, body: MessageInput, user: UserId):
                 raise HTTPException(409, '다른 메시지에는 새 요청 ID가 필요합니다.')
             return session_json(db, row)
         require_active(row)
+        if row.protocol_version == 2 and row.next_speaker_index != mind_council.STEPS:
+            raise HTTPException(409, '대표 패널의 질문이 끝난 뒤에 답변할 수 있어요.')
         limit(user, 'discussion-message', 60, db=db)
         if row.protocol_version == 2:
             row.next_speaker_index = 0

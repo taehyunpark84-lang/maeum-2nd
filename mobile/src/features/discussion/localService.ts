@@ -13,6 +13,7 @@ import {
   COUNCIL_STEPS,
   councilStep,
   councilDemoReply,
+  annotateCouncilMessages,
 } from "./council";
 
 export const DISCUSSION_LOCAL_KEY = `${STORAGE_PREFIX}.discussion.mock.v1`;
@@ -558,6 +559,11 @@ export function createLocalDiscussionService(
         const session = sessionIn(document, sessionId, true);
         capacity(session);
         if (session.protocol_version === 2) {
+          if (session.next_speaker_index !== COUNCIL_STEPS)
+            throw new LocalDiscussionError(
+              409,
+              "대표 패널의 질문이 끝난 뒤에 답변할 수 있어요.",
+            );
           session.next_speaker_index = 0;
           session.phase = "opening";
         }
@@ -627,6 +633,8 @@ export function createLocalDiscussionService(
           session.completed_turns++;
         if (session.protocol_version === 2)
           session.phase = councilStep(session).phase;
+        if (session.protocol_version === 2)
+          session.messages = annotateCouncilMessages(session.messages);
         session.revision++;
         draft.requests[`reply:${requestId}`] = { sessionId, signature };
         return session;

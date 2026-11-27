@@ -72,6 +72,7 @@ def reply():
     session = response.json()
     message = session['messages'][-1]
     report['utterances'].append({'speaker': message['speaker'], 'text': message['text'],
+                                 'phase': message.get('phase'),
                                  'reminder_sent': captured[-1]})
     print(f"PASS: utterance {len(captured)}/14 {message['speaker']} reminder={captured[-1]}", flush=True)
 
@@ -80,6 +81,14 @@ try:
     for _ in range(STEPS):
         reply()
     assert session['phase'] == 'awaiting_user'
+    assert [m['phase'] for m in session['messages']] == ['opening', *(['first_opinion'] * 4), *(['debate'] * 4), 'bridge', 'question']
+    for message in session['messages']:
+        if message['phase'] == 'first_opinion':
+            assert 2 <= len(message['text'].splitlines()) <= 3, 'Opinion must have 2-3 lines'
+        if message['phase'] == 'debate':
+            assert len(message['text'].splitlines()) == 1
+            assert len(message['text']) <= 90, 'Rebuttal must be short'
+            assert any(name in message['text'] for name in ('슬픔', '불안', '분노', '기쁨')), 'Rebuttal must address another panel'
     assert captured == [False, True, True, True, True, True, True, True, True, False, True]
     report['first_cycle'] = 'passed'
     client.patch('/discussions/settings', json={'show_history': False, 'reminder_enabled': False}).raise_for_status()

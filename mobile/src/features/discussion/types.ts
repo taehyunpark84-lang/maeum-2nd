@@ -13,6 +13,8 @@ export type DiscussionMessage = {
   text: string;
   turn: number;
   created_at: number;
+  phase?:
+    "opening" | "first_opinion" | "debate" | "bridge" | "question" | "user";
 };
 export type DiscussionSession = {
   id: string;

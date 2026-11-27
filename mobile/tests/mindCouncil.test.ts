@@ -3,7 +3,11 @@ import test from "node:test";
 import { DiscussionController } from "../src/features/discussion/controller";
 import { createLocalDiscussionService } from "../src/features/discussion/localService";
 import { createNetworkDiscussionService } from "../src/features/discussion/networkService";
-import { PANEL_IDS, COUNCIL_STEPS } from "../src/features/discussion/council";
+import {
+  PANEL_IDS,
+  COUNCIL_STEPS,
+  councilTranscript,
+} from "../src/features/discussion/council";
 import type { DiscussionService } from "../src/features/discussion/types";
 
 function fixture() {
@@ -220,4 +224,87 @@ test("old server or ignored reminder changes cannot masquerade as a working new 
   );
   response = { ...modern, phase: "awaiting_user" };
   await assert.rejects(network.get(modern.id), /응답 형식/);
+});
+
+test("two rounds each contain exactly one opinion block and one debate block before a single question", async () => {
+  const { service } = fixture();
+  let controller!: DiscussionController;
+  let blocked = 0;
+  const guarded: DiscussionService = {
+    ...service,
+    reply: async (...args) => {
+      assert.equal(controller.getSnapshot().canAnswer, false);
+      assert.equal(await controller.send("자동 발언 중에는 입력 불가"), false);
+      blocked++;
+      return service.reply(...args);
+    },
+  };
+  controller = new DiscussionController(guarded, 0);
+  await start(controller);
+  assert.equal(controller.getSnapshot().canAnswer, true);
+  const first = controller.getSnapshot().session!;
+  assert.deepEqual(
+    councilTranscript(first.messages).map((row) => row.phase),
+    ["opening", "first_opinion", "debate", "bridge", "question"],
+  );
+  await controller.send("내 마음을 더 알아주길 바라.");
+  await settled(controller);
+  const messages = controller.getSnapshot().session!.messages;
+  // Old persisted messages without phase metadata get the same visual grouping.
+  const oldMessages = messages.map(({ phase: _phase, ...message }) => message);
+  const rows = councilTranscript(oldMessages);
+  assert.deepEqual(
+    rows.map((row) => row.phase),
+    [
+      "opening",
+      "first_opinion",
+      "debate",
+      "bridge",
+      "question",
+      "user",
+      "opening",
+      "first_opinion",
+      "debate",
+      "bridge",
+      "question",
+    ],
+  );
+  assert.deepEqual(
+    rows
+      .filter((row) => row.phase === "first_opinion" || row.phase === "debate")
+      .map((row) => row.messages.length),
+    [4, 4, 4, 4],
+  );
+  assert.equal(rows.filter((row) => row.phase === "question").length, 2);
+  assert.equal(controller.getSnapshot().canAnswer, true);
+  assert.equal(blocked, 22);
+  controller.dispose();
+});
+
+test("offline service also rejects input before the representative question", async () => {
+  const { service } = fixture();
+  const proposal = await service.prepare("안건", "input-guard-prepare");
+  let session = await service.confirm(proposal.id);
+  for (let index = 0; index < COUNCIL_STEPS; index++) {
+    await assert.rejects(
+      service.send(session.id, "아직 입력 불가", `blocked-${index}-request`),
+      /대표 패널의 질문/,
+    );
+    session = await service.reply(
+      session.id,
+      session.revision,
+      `reply-${index}-request`,
+    );
+  }
+  assert.equal(session.phase, "awaiting_user");
+  session = await service.send(
+    session.id,
+    "이제 답변",
+    "answer-allowed-request",
+  );
+  assert.equal(session.phase, "opening");
+  await assert.rejects(
+    service.send(session.id, "연속 입력 불가", "answer-blocked-request"),
+    /대표 패널의 질문/,
+  );
 });

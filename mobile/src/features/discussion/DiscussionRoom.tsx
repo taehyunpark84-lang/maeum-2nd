@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -21,7 +21,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button, IconButton, colors } from "../../components/ui";
 import { discussionAssets } from "../../config/assets";
 import { useDiscussion } from "./useDiscussion";
-import { PANELS } from "./council";
+import {
+  PANELS,
+  councilTranscript,
+  type CouncilTranscriptRow,
+} from "./council";
 import { CouncilAvatar } from "./CouncilAvatar";
 import LegacyDiscussionRoom from "./LegacyDiscussionRoom";
 import type { DiscussionMessage, DiscussionService, PanelId } from "./types";
@@ -53,6 +57,7 @@ export default function DiscussionRoom({
     error,
     visibleMessages,
     reminderEnabled,
+    canAnswer,
   } = discussion;
   const [newAgenda, setNewAgenda] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
@@ -60,7 +65,11 @@ export default function DiscussionRoom({
   const [answer, setAnswer] = useState("");
   const [settings, setSettings] = useState(false);
   const [showLatest, setShowLatest] = useState(false);
-  const list = useRef<FlatList<DiscussionMessage>>(null);
+  const list = useRef<FlatList<CouncilTranscriptRow>>(null);
+  const transcript = useMemo(
+    () => councilTranscript(visibleMessages),
+    [visibleMessages],
+  );
   const nearBottom = useRef(true);
   const { width } = useWindowDimensions();
   const cardSize = Math.min(140, Math.max(96, (width - 76) / 2));
@@ -132,11 +141,96 @@ export default function DiscussionRoom({
       </View>
     );
   }
+  function renderRow({ item }: { item: CouncilTranscriptRow }) {
+    if (item.phase === "first_opinion")
+      return (
+        <View style={s.opinionSection}>
+          <View style={s.sectionHeading}>
+            <Text accessibilityRole="header" style={s.sectionTitle}>
+              {item.turn === 1
+                ? "패널별 1차 의견"
+                : "사용자 답변을 반영한 의견"}
+            </Text>
+            <Text style={s.stageBadge}>2단계</Text>
+          </View>
+          {item.messages.map((message, index) => {
+            const panel = PANELS.find((bot) => bot.id === message.speaker)!;
+            return (
+              <View
+                key={message.id}
+                style={[s.opinionRow, index > 0 && s.opinionDivider]}
+              >
+                <CouncilAvatar
+                  id={message.speaker as PanelId}
+                  size={48}
+                  square
+                />
+                <View style={s.messageBody}>
+                  <Text style={[s.speaker, { color: tones[message.speaker] }]}>
+                    {panel.name} · {panel.position}
+                  </Text>
+                  <Text selectable style={s.messageText}>
+                    {message.text}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      );
+    if (item.phase === "debate")
+      return (
+        <View style={s.debateSection}>
+          <View style={s.sectionHeading}>
+            <Text accessibilityRole="header" style={s.debateTitle}>
+              감정들의 논쟁
+            </Text>
+            <Text style={s.debateBadge}>3단계</Text>
+          </View>
+          {item.messages.map((message) => {
+            const panel = PANELS.find((bot) => bot.id === message.speaker)!;
+            return (
+              <View key={message.id} style={s.debateRow}>
+                <CouncilAvatar id={message.speaker as PanelId} size={23} />
+                <Text selectable style={s.debateText}>
+                  <Text
+                    style={[s.debateName, { color: tones[message.speaker] }]}
+                  >
+                    {panel.name}:{" "}
+                  </Text>
+                  {message.text}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      );
+    const label =
+      item.phase === "bridge"
+        ? "사회자 브리지"
+        : item.phase === "question"
+          ? "대표 패널 질문"
+          : item.phase === "opening"
+            ? item.turn === 1
+              ? "사회자 회의 소집"
+              : "다음 라운드 시작"
+            : null;
+    return (
+      <View style={item.phase === "question" ? s.questionSection : undefined}>
+        {label ? (
+          <Text accessibilityRole="header" style={s.transitionLabel}>
+            {label}
+          </Text>
+        ) : null}
+        {renderMessage({ item: item.messages[0] })}
+      </View>
+    );
+  }
   return (
     <View style={s.screen}>
       <Image
         source={discussionAssets.background}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { width: "100%", height: "100%" }]}
         resizeMode="cover"
         accessible={false}
       />
@@ -261,9 +355,9 @@ export default function DiscussionRoom({
             <>
               <FlatList
                 ref={list}
-                data={visibleMessages}
+                data={transcript}
                 keyExtractor={(item) => item.id}
-                renderItem={renderMessage}
+                renderItem={renderRow}
                 style={s.flex}
                 contentContainerStyle={s.messages}
                 keyboardShouldPersistTaps="handled"
@@ -328,13 +422,14 @@ export default function DiscussionRoom({
                     onChangeText={setAnswer}
                     multiline
                     maxLength={2000}
-                    editable={!!awaitingUser && !busy}
-                    style={s.answerInput}
+                    editable={canAnswer}
+                    accessibilityState={{ disabled: !canAnswer }}
+                    style={[s.answerInput, !canAnswer && s.lockedInput]}
                   />
                   <IconButton
                     name="arrow-up"
                     label="내 답변 보내기"
-                    disabled={!awaitingUser || !answer.trim() || !!busy}
+                    disabled={!canAnswer || !answer.trim()}
                     onPress={() => void send()}
                   />
                 </View>
@@ -520,6 +615,64 @@ const s = StyleSheet.create({
     borderTopRightRadius: 5,
   },
   messageText: { fontSize: 16, lineHeight: 26, color: colors.text },
+  sectionHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  stageBadge: {
+    color: colors.muted,
+    fontSize: 11,
+    backgroundColor: "#EFECE5",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  opinionSection: {
+    backgroundColor: "#FFFCF7F5",
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E6E1D8",
+  },
+  opinionRow: { flexDirection: "row", gap: 10, paddingVertical: 12 },
+  opinionDivider: { borderTopWidth: 1, borderTopColor: "#E9E5DD" },
+  debateSection: {
+    backgroundColor: "#F1ECF8F5",
+    borderLeftWidth: 4,
+    borderLeftColor: "#8B6AAA",
+    padding: 13,
+    borderRadius: 15,
+    gap: 11,
+  },
+  debateTitle: { color: "#644880", fontWeight: "700", fontSize: 16 },
+  debateBadge: { color: "#75568D", fontSize: 11 },
+  debateRow: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
+  debateText: { flex: 1, fontSize: 15, lineHeight: 23, color: colors.text },
+  debateName: { fontWeight: "700" },
+  transitionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.green,
+    marginBottom: 9,
+  },
+  questionSection: {
+    borderWidth: 1,
+    borderColor: "#A9B99D",
+    backgroundColor: "#F3F6EDF0",
+    padding: 12,
+    borderRadius: 17,
+  },
+  lockedInput: { color: "#8A918A", backgroundColor: "#F4F3EF" },
   typing: { flexDirection: "row", gap: 8, paddingVertical: 12 },
   muted: { color: colors.muted, fontSize: 13 },
   composerPanel: {

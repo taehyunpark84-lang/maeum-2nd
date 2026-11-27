@@ -3,6 +3,7 @@ import type {
   DiscussionService,
   DiscussionSession,
 } from "./types";
+import { canAnswerCouncil } from "./council";
 
 export type DiscussionState = {
   ready: boolean;
@@ -13,6 +14,7 @@ export type DiscussionState = {
   hiddenCount: number;
   showHistory: boolean;
   reminderEnabled: boolean;
+  canAnswer: boolean;
   running: boolean;
   waiting: boolean;
   busy: "load" | "prepare" | "confirm" | "send" | "settings" | null;
@@ -48,6 +50,7 @@ export class DiscussionController {
     hiddenCount: 0,
     showHistory: false,
     reminderEnabled: true,
+    canAnswer: false,
     running: false,
     waiting: false,
     busy: null,
@@ -80,6 +83,11 @@ export class DiscussionController {
     if (this.disposed) return;
     const next = { ...this.snapshot, ...value };
     const messages = next.session?.messages ?? [];
+    next.canAnswer =
+      next.ready &&
+      !next.running &&
+      !next.busy &&
+      canAnswerCouncil(next.session);
     next.hiddenCount = messages.filter((m) =>
       this.previousIds.has(m.id),
     ).length;
@@ -258,6 +266,9 @@ export class DiscussionController {
       const busyDeadline = Date.now() + 150000;
       while (
         current.state === "active" &&
+        !(
+          current.protocol_version === 2 && current.phase === "awaiting_user"
+        ) &&
         current.completed_turns < target &&
         valid()
       ) {
@@ -320,6 +331,7 @@ export class DiscussionController {
     if (
       !session ||
       session.state !== "active" ||
+      (session.protocol_version === 2 && !this.snapshot.canAnswer) ||
       !value ||
       value.length > 2000 ||
       this.snapshot.busy
