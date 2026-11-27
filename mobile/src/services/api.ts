@@ -2,6 +2,7 @@ import { fetch as streamingFetch } from "expo/fetch";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import type { PlaceId } from "../types";
+import { STORAGE_PREFIX } from "../config/environment";
 
 // 주소만 공개 설정입니다. OpenAI 키는 backend/.env에서만 읽습니다.
 export const API_URL = (
@@ -50,7 +51,7 @@ export type Metric = {
   settings: Record<string, unknown>;
 };
 
-const TOKEN_KEY = "maeum2nd.api.token";
+const TOKEN_KEY = `${STORAGE_PREFIX}.api.token`;
 let token = "";
 export const authHeaders = (): Record<string, string> =>
   token ? { Authorization: `Bearer ${token}` } : {};

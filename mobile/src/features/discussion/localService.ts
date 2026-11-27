@@ -6,7 +6,9 @@ import type {
   DiscussionSettings,
 } from "./types";
 
-export const DISCUSSION_LOCAL_KEY = "maeum2nd.discussion.mock.v1";
+import { STORAGE_PREFIX } from "../../config/environment";
+
+export const DISCUSSION_LOCAL_KEY = `${STORAGE_PREFIX}.discussion.mock.v1`;
 
 type Storage = {
   getItem(key: string): Promise<string | null>;

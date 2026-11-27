@@ -521,3 +521,14 @@
 - 미준비: `backend/storage` 및 `backend/data` 없음. 개발 DB 생성·마이그레이션·연결 검증 미실시. `backend/.env`, `mobile/.env` 없음(예시 파일만 존재). 개발 전용 DB 경로·서버 주소·AI 모드는 후속 환경 준비에서 설정 필요.
 - 원본의 환경 파일·API 키·DB·이미지·node_modules 복사 없음. 기존 Git 추적 이미지 외 추가 자산 없음. 클라우드 서버·운영 그림 작업자·DB·배포 설정 변경 및 외부 서비스 접속 없음.
 - 이번 범위는 Git 분리 확인과 이 문서 기록만이며 개발 서버 실행·기능 구현·패키지 설치·앱 테스트·빌드·GitHub 푸시 미실시. 후속 개발 환경 준비 및 기능 지시 대기.
+
+## 2026-11-27 — 개발 PC 로컬 API·그림 작업자·DB 준비
+- `codex/development` worktree에 독립 Python 3.14.7 가상환경과 고정 Python 패키지 39개, Node 24.21.0/npm 11.19.0으로 모바일 패키지 808개 설치. 원본의 환경·키·DB·이미지·node_modules 복사 없음. 기존 lockfile 유지.
+- Git 제외 `backend/.env`와 `mobile/.env` 신규 작성. 개발 DB는 이 worktree의 `backend/storage/maeum-development.db`. g116_discussions 마이그레이션 및 Alembic check 통과, 최초 업무 테이블 16개 0건·SQLite 무결성·외래 키 정상. 이후 휴대폰에서 사용한 데이터는 보존.
+- API·독립 그림 작업자·Expo를 실제 기동. PC localhost 및 LAN `http://172.30.1.18:8000/health` HTTP 200/ok/mock, Metro 상태 정상. 휴대폰 브라우저 health 및 Expo Go 앱 연결·시연모드 표시 사용자 확인. 휴대폰 API 요청 HTTP 200, Android 번들 1656 모듈 생성 확인. 방화벽 변경 없음.
+- 개발 플래그 `EXPO_PUBLIC_LOCAL_DEVELOPMENT=1`로 앱 이름/slug/scheme/네이티브 ID, 로그인 토큰·로컬 기록·생각방 시연 저장 키 분리. 플래그 없는 기존 설정/키 유지 검사 추가. app.json 및 클라우드 배포 설정 변경 없음.
+- `scripts/run-local-development.ps1`에 API/worker/mobile 실행과 로컬 DB·모드·키·PC 주소 검사 추가. 실행/종료·환경·기기 연결 안내는 `docs/LOCAL_DEVELOPMENT.md`. 숨김 프로세스 PID·로그·QR은 Git 제외 `tmp/local-development`에 보관.
+- 검증: pip check, 백엔드 격리 테스트 51개, 모바일 typecheck/lint 및 테스트 49개 통과. 별도 임시 SQLite·실제 HTTP API·독립 작업자로 가입/로그인/채팅/요약/작업 접수/완료/PNG 수신 통과. 준비 검증용 계정·그림은 개발 DB에 넣지 않음.
+- Expo 공식 SDK 58/환경변수/동적 설정 문서 확인. expo install --check는 최신 권장 버전 14개 차이로 실패, npm audit moderate 10건 보고. 자동 업그레이드/audit fix 미실시.
+- 사용자 후속 요청으로 로컬 실제 AI 전환 설정(`AI_MODE=openai`, 기존 텍스트/이미지 모델) 준비. 키는 사용자가 개발 backend/.env에 직접 입력하도록 안내했으며 키 입력·로컬 API/작업자 재시작·모델 접근/실제 응답 확인 대기. 실행 중 프로세스는 아직 최초 mock 설정. 기존 시연 기록은 보존.
+- 클라우드 운영 서버·작업자·DB·배포 접속/변경 없음. 원본 main 파일 수정 없음. GitHub 푸시·APK 빌드·iOS 검증 미실시.
