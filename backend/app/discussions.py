@@ -11,7 +11,7 @@ from .security import current_user
 from .limits import limit
 from .ai_errors import public_ai_error
 from .tuning import CHAT_TIMEOUT_SECONDS
-from . import discussion_ai
+from . import discussion_ai, mind_council
 
 router = APIRouter(prefix='/discussions', tags=['discussions'])
 UserId = Annotated[str, Depends(current_user)]
@@ -20,6 +20,7 @@ UserId = Annotated[str, Depends(current_user)]
 class PrepareInput(BaseModel):
     topic: str = Field(min_length=1, max_length=3000)
     request_id: str = Field(pattern=r'^[a-zA-Z0-9_-]{8,64}$')
+    protocol_version: int = Field(default=1, ge=1, le=2)
 
     @field_validator('topic')
     @classmethod
@@ -48,6 +49,7 @@ class ReplyInput(BaseModel):
 
 class SettingsInput(BaseModel):
     show_history: bool
+    reminder_enabled: bool | None = None
 
 
 def lock_account(db, user):
@@ -73,10 +75,13 @@ def session_json(db, row):
     messages = db.scalars(select(DiscussionMessage).where(
         DiscussionMessage.session_id == row.id,
         DiscussionMessage.sequence <= row.revision).order_by(DiscussionMessage.sequence))
-    return {'id':row.id, 'topic':row.topic, 'bots':json.loads(row.bots),
+    result = {'id':row.id, 'topic':row.topic, 'bots':json.loads(row.bots),
             'messages':[message_json(message) for message in messages],
             'next_speaker_index':row.next_speaker_index, 'completed_turns':row.completed_turns,
             'revision':row.revision, 'state':row.state}
+    if row.protocol_version == 2:
+        result.update(protocol_version=2, phase=mind_council.step(row)[1])
+    return result
 
 
 def prior_request(db, session_id, request_id):
@@ -90,10 +95,13 @@ def require_active(row):
 
 
 @router.get('/settings')
-def get_settings(user: UserId):
+def get_settings(user: UserId, protocol_version: int = 1):
     with Db() as db:
         row = db.get(DiscussionSettings, user)
-        return {'show_history':row.show_history if row else False}
+        result = {'show_history':row.show_history if row else False}
+        if protocol_version == 2:
+            result['reminder_enabled'] = row.reminder_enabled if row else True
+        return result
 
 
 @router.patch('/settings')
@@ -105,8 +113,21 @@ def update_settings(body: SettingsInput, user: UserId):
             row = DiscussionSettings(user_id=user)
             db.add(row)
         row.show_history = body.show_history
+        if body.reminder_enabled is not None:
+            if row.reminder_enabled != body.reminder_enabled:
+                # Invalidate an in-flight council response so the next displayed
+                # utterance really uses the updated toggle, even across devices.
+                db.execute(update(DiscussionSession).where(
+                    DiscussionSession.user_id == user, DiscussionSession.state == 'active',
+                    DiscussionSession.protocol_version == 2).values(
+                    revision=DiscussionSession.revision + 1, reply_lease_id=None,
+                    reply_lease_until=0, updated=time.time()))
+            row.reminder_enabled = body.reminder_enabled
         db.commit()
-        return {'show_history':row.show_history}
+        result = {'show_history':row.show_history}
+        if body.reminder_enabled is not None:
+            result['reminder_enabled'] = row.reminder_enabled
+        return result
 
 
 @router.get('/current')
@@ -124,14 +145,17 @@ async def prepare(body: PrepareInput, user: UserId, request: Request):
         prior = db.scalar(select(DiscussionSession).where(
             DiscussionSession.user_id == user, DiscussionSession.request_id == body.request_id))
         if prior is not None:
-            if prior.topic != body.topic:
+            if prior.topic != body.topic or prior.protocol_version != body.protocol_version:
                 raise HTTPException(409, '다른 고민에는 새 요청 ID가 필요합니다.')
             return session_json(db, prior)
     limit(user, 'discussion-prepare', 12)
     try:
-        plan = await asyncio.wait_for(discussion_ai.assign_roles(user, body.topic), CHAT_TIMEOUT_SECONDS)
-        # 외부 모델/테스트 어댑터의 결과도 저장 전에 같은 규칙으로 검증합니다.
-        plan = discussion_ai.RolePlan.model_validate(plan.model_dump())
+        if body.protocol_version == 2:
+            panel_bots = mind_council.bots()
+        else:
+            plan = await asyncio.wait_for(discussion_ai.assign_roles(user, body.topic), CHAT_TIMEOUT_SECONDS)
+            plan = discussion_ai.RolePlan.model_validate(plan.model_dump())
+            panel_bots = plan.model_dump()['bots']
     except Exception as error:
         raise HTTPException(502, public_ai_error(error)) from None
     if await request.is_disconnected():
@@ -141,11 +165,11 @@ async def prepare(body: PrepareInput, user: UserId, request: Request):
         prior = db.scalar(select(DiscussionSession).where(
             DiscussionSession.user_id == user, DiscussionSession.request_id == body.request_id))
         if prior is not None:
-            if prior.topic != body.topic:
+            if prior.topic != body.topic or prior.protocol_version != body.protocol_version:
                 raise HTTPException(409, '다른 고민에는 새 요청 ID가 필요합니다.')
             return session_json(db, prior)
         row = DiscussionSession(user_id=user, topic=body.topic, request_id=body.request_id,
-                                bots=json.dumps(plan.model_dump()['bots'], ensure_ascii=False))
+                                bots=json.dumps(panel_bots, ensure_ascii=False), protocol_version=body.protocol_version)
         db.add(row)
         db.flush()
         result = session_json(db, row)
@@ -192,6 +216,10 @@ def add_message(session_id: str, body: MessageInput, user: UserId):
             return session_json(db, row)
         require_active(row)
         limit(user, 'discussion-message', 60, db=db)
+        if row.protocol_version == 2:
+            row.next_speaker_index = 0
+            row.reply_lease_id = None
+            row.reply_lease_until = 0
         row.revision += 1
         row.updated = time.time()
         db.add(DiscussionMessage(session_id=row.id, request_id=body.request_id,
@@ -213,6 +241,8 @@ async def reply(session_id: str, body: ReplyInput, user: UserId, request: Reques
                 raise HTTPException(409, '발언 생성에는 새 요청 ID가 필요합니다.')
             return session_json(db, row)
         require_active(row)
+        if row.protocol_version == 2 and row.next_speaker_index >= mind_council.STEPS:
+            raise HTTPException(409, '사용자의 답변을 기다리고 있어요.')
         if row.revision != body.expected_revision:
             raise HTTPException(409, '새 의견이나 발언이 있습니다. 대화를 새로 불러와 주세요.')
         if row.reply_lease_id and row.reply_lease_until > time.time():
@@ -222,11 +252,15 @@ async def reply(session_id: str, body: ReplyInput, user: UserId, request: Reques
         row.reply_lease_id = lease_id
         row.reply_lease_until = time.time() + CHAT_TIMEOUT_SECONDS + 15
         snapshot = session_json(db, row)
+        settings = db.get(DiscussionSettings, user)
+        reminder_enabled = settings.reminder_enabled if settings else True
         db.commit()
         # ORM row는 세션 종료 후에도 expire_on_commit=False로 읽기만 사용합니다.
     try:
         try:
-            text = await asyncio.wait_for(discussion_ai.next_reply(user, row, snapshot['messages']), CHAT_TIMEOUT_SECONDS)
+            generate = (mind_council.next_reply(user, row, snapshot['messages'], reminder_enabled)
+                        if row.protocol_version == 2 else discussion_ai.next_reply(user, row, snapshot['messages']))
+            text = await asyncio.wait_for(generate, CHAT_TIMEOUT_SECONDS)
             if not isinstance(text, str) or not text.strip() or len(text) > 1800:
                 raise ValueError('빈 발언 또는 발언 길이 초과')
         except Exception as error:
@@ -239,14 +273,18 @@ async def reply(session_id: str, body: ReplyInput, user: UserId, request: Reques
             require_active(row)
             # 의견/새 주제/만료 후 새 생성이 있으면 낡은 응답은 저장하지 않습니다.
             if row.revision != body.expected_revision or row.reply_lease_id != lease_id:
-                raise HTTPException(409, '새 의견이 반영되어 이전 발언을 취소했어요. 이어하기를 눌러 주세요.')
-            speaker = discussion_ai.BOT_IDS[row.next_speaker_index]
+                raise HTTPException(409, '새 의견이나 설정이 반영되어 이전 발언을 취소했어요. 다시 확인해 주세요.'
+                                    if row.protocol_version == 2 else '새 의견이 반영되어 이전 발언을 취소했어요. 이어하기를 눌러 주세요.')
+            speaker = (mind_council.step(row)[0] if row.protocol_version == 2
+                       else discussion_ai.BOT_IDS[row.next_speaker_index])
             row.revision += 1
             row.updated = time.time()
             db.add(DiscussionMessage(session_id=row.id, request_id=body.request_id, sequence=row.revision,
                 speaker=speaker, text=text.strip(), turn=row.completed_turns + 1))
-            row.next_speaker_index = (row.next_speaker_index + 1) % 3
-            if row.next_speaker_index == 0:
+            row.next_speaker_index = (row.next_speaker_index + 1 if row.protocol_version == 2
+                                      else (row.next_speaker_index + 1) % 3)
+            if (row.protocol_version == 2 and row.next_speaker_index == mind_council.STEPS
+                    or row.protocol_version != 2 and row.next_speaker_index == 0):
                 row.completed_turns += 1
             row.reply_lease_id = None
             row.reply_lease_until = 0

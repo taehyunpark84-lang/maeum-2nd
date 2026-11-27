@@ -12,6 +12,7 @@ export type DiscussionState = {
   visibleMessages: DiscussionMessage[];
   hiddenCount: number;
   showHistory: boolean;
+  reminderEnabled: boolean;
   running: boolean;
   waiting: boolean;
   busy: "load" | "prepare" | "confirm" | "send" | "settings" | null;
@@ -46,6 +47,7 @@ export class DiscussionController {
     visibleMessages: [],
     hiddenCount: 0,
     showHistory: false,
+    reminderEnabled: true,
     running: false,
     waiting: false,
     busy: null,
@@ -83,7 +85,13 @@ export class DiscussionController {
     ).length;
     next.visibleMessages = next.showHistory
       ? messages
-      : messages.filter((m) => !this.previousIds.has(m.id));
+      : next.session?.protocol_version === 2
+        ? messages.filter(
+            (m) => m.turn === Math.max(0, ...messages.map((item) => item.turn)),
+          )
+        : messages.filter((m) => !this.previousIds.has(m.id));
+    if (next.session?.protocol_version === 2)
+      next.hiddenCount = messages.length - next.visibleMessages.length;
     this.snapshot = next;
     this.listeners.forEach((listener) => listener());
   }
@@ -124,7 +132,18 @@ export class DiscussionController {
       ]);
       if (!op.valid()) return;
       this.accept(session);
-      this.patch({ showHistory: settings.show_history, ready: true });
+      this.patch({
+        showHistory: settings.show_history,
+        reminderEnabled: settings.reminder_enabled ?? true,
+        ready: true,
+      });
+      if (
+        session?.protocol_version === 2 &&
+        session.phase !== "awaiting_user"
+      ) {
+        this.patch({ busy: null });
+        void this.resume();
+      }
     } catch (error) {
       if (op.valid()) this.fail(error, "생각방을 불러오지 못했어요.");
     } finally {
@@ -139,6 +158,11 @@ export class DiscussionController {
   setForeground = (active: boolean) => {
     this.suspended = !active;
     if (!active) this.pause();
+    else if (
+      this.snapshot.ready &&
+      this.snapshot.session?.protocol_version === 2
+    )
+      void this.reload();
   };
   prepare = async (topic: string) => {
     const value = topic.trim();
@@ -212,7 +236,8 @@ export class DiscussionController {
       this.snapshot.busy ||
       this.snapshot.running ||
       !initial ||
-      initial.state !== "active"
+      initial.state !== "active" ||
+      (initial.protocol_version === 2 && initial.phase === "awaiting_user")
     )
       return;
     const version = ++this.playbackVersion;
@@ -339,6 +364,9 @@ export class DiscussionController {
     try {
       const settings = await this.service.saveSettings({
         show_history: showHistory,
+        ...(this.snapshot.session?.protocol_version === 2
+          ? { reminder_enabled: this.snapshot.reminderEnabled }
+          : {}),
       });
       if (!op.valid()) return false;
       this.patch({ showHistory: settings.show_history });
@@ -348,6 +376,32 @@ export class DiscussionController {
       return false;
     } finally {
       if (op.valid()) this.patch({ busy: null });
+    }
+  };
+  saveReminder = async (enabled: boolean) => {
+    if (this.snapshot.busy) return false;
+    this.pause();
+    const op = this.begin("settings");
+    try {
+      const settings = await this.service.saveSettings({
+        show_history: this.snapshot.showHistory,
+        reminder_enabled: enabled,
+      });
+      if (!op.valid()) return false;
+      this.patch({
+        reminderEnabled: settings.reminder_enabled ?? true,
+        busy: null,
+      });
+      const current = this.snapshot.session;
+      if (current?.protocol_version === 2 && current.phase !== "awaiting_user")
+        void this.resume();
+      return true;
+    } catch (error) {
+      if (op.valid()) this.fail(error, "리마인더 설정을 저장하지 못했어요.");
+      return false;
+    } finally {
+      if (op.valid() && this.snapshot.busy === "settings")
+        this.patch({ busy: null });
     }
   };
   dispose = () => {

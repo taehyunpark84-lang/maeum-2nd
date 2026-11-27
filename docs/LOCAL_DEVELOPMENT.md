@@ -5,7 +5,7 @@
 - 작업 경로: `C:\Users\smhrd1\.codex\worktrees\70e0\maeum-latest`
 - API: `http://172.30.1.18:8000`, PC 확인: `http://127.0.0.1:8000/health`
 - Expo Go: `exp://172.30.1.18:8081`, 표시 이름: **마음이 머무는 곳 개발**
-- 개발 DB: `backend/storage/maeum-development.db`, 마이그레이션 `g116_discussions`
+- 개발 DB: `backend/storage/maeum-development.db`, 마이그레이션 `h117_mind_council` (기존 g116에서 데이터 보존 후 추가 열 적용)
 - 현재 `AI_MODE=openai`: 사용자 키 입력 후 로컬 API와 작업자를 재시작했습니다. localhost/LAN health의 openai 표시, 두 모델 접근, 실제 텍스트 응답과 이미지 생성·디코딩을 확인했습니다. 최초 mock 검증 기록과 구분합니다.
 
 ## 준비된 환경

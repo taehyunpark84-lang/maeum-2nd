@@ -183,7 +183,7 @@ export default function App() {
                   로그인 없는 로컬 시연입니다. 대화와 일기는 이 기기에 평문으로
                   저장됩니다. 실제 민감정보는 입력하지 마세요.
                 </Copy>
-                {error && <Copy>{error}</Copy>}
+                {error ? <Copy>{error}</Copy> : null}
                 <Button
                   label="나만의 공간으로"
                   icon="arrow-forward"
@@ -405,7 +405,7 @@ export default function App() {
               이 기기에서만 보입니다. 실제 커뮤니티가 아니며 다른 사람에게
               전송되지 않아요.
             </Copy>
-            {notice && <Copy>{notice}</Copy>}
+            {notice ? <Copy>{notice}</Copy> : null}
             {state.posts.filter(
               (post) => !state.blockedAliases.includes(post.alias),
             ).length === 0 && (
@@ -508,7 +508,7 @@ export default function App() {
               key={key}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab === key }}
-              accessibilityLabel={["공간", "생각방", "내 기록", "공감 피드"][i]}
+              accessibilityLabel={["공간", "마음", "내 기록", "공감 피드"][i]}
               onPress={() => {
                 if (key === "discussion") {
                   router.push("/discussion");
@@ -546,7 +546,7 @@ export default function App() {
                   fontSize: 12,
                 }}
               >
-                {["공간", "생각방", "내 기록", "공감 피드"][i]}
+                {["공간", "마음", "내 기록", "공감 피드"][i]}
               </Text>
             </Pressable>
           ),
@@ -638,7 +638,7 @@ export default function App() {
                   );
                 }}
               />
-              {notice && <Copy>{notice}</Copy>}
+              {notice ? <Copy>{notice}</Copy> : null}
               {state.blockedAliases.length > 0 && (
                 <Button
                   label="로컬 차단 모두 해제"

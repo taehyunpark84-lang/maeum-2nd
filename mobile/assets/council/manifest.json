@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "file": "character-reference.png",
+      "size": [
+        857,
+        572
+      ],
+      "mode": "RGBA",
+      "sha256": "52d86dd4e33576f8f31e9d696317176cc5cccf260f27ebc2ec16fa18824f1223"
+    },
+    {
+      "file": "moderator-owl.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "sha256": "c31f5741994a62ed50ed627cad7df9eea884a9898ce9b7a673899b8a8ebe372b"
+    }
+  ],
+  "moderator_generation": {
+    "tool": "image_gen.imagegen (built-in)",
+    "prompt": "Use case: stylized-concept. Asset type: a single small avatar for the moderator of a Korean inner-emotions council app. Create an original friendly pearl-white and muted sage green 3D animated little owl, calm thoughtful expressive eyes, tiny round glasses, wearing a small ivory blazer, head and shoulders centered, front view, clear readable silhouette in a circular 40px avatar, softly lit, high quality stylized render. Transparent background. No text, no logos, no border. Save the final image as a local project-ready PNG.",
+    "transparent_background": true
+  },
+  "reference_use": "User-provided 시작화면.png copied byte-for-byte; only four 196px character rectangles are displayed with native Image clipping; text and controls are real components."
+}
