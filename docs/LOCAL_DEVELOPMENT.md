@@ -6,7 +6,7 @@
 - API: `http://172.30.1.18:8000`, PC 확인: `http://127.0.0.1:8000/health`
 - Expo Go: `exp://172.30.1.18:8081`, 표시 이름: **마음이 머무는 곳 개발**
 - 개발 DB: `backend/storage/maeum-development.db`, 마이그레이션 `g116_discussions`
-- 최초 검증은 `mock`: 로그인·DB·작업 큐·작업자는 실제 로컬 동작, 답변과 그림은 시연. 이후 사용자 요청으로 실제 AI 전환 설정을 준비했으며 키 입력·재시작 확인 전까지 실행 중인 서버는 mock입니다.
+- 현재 `AI_MODE=openai`: 사용자 키 입력 후 로컬 API와 작업자를 재시작했습니다. localhost/LAN health의 openai 표시, 두 모델 접근, 실제 텍스트 응답과 이미지 생성·디코딩을 확인했습니다. 최초 mock 검증 기록과 구분합니다.
 
 ## 준비된 환경
 
@@ -69,6 +69,6 @@ Android Expo Go의 사진첩 저장 제한은 기존과 같습니다. 독립 APK
 - 모바일 typecheck/lint 통과, 개발/기존 설정·저장 키 분리 검사 포함 테스트 49개 통과. 개발 앱 매니페스트의 이름·slug·네이티브 ID 및 LAN 번들 주소 확인. 휴대폰 요청에 Android 번들 생성 성공(1656 모듈).
 - PC localhost/LAN health HTTP 200 및 Expo `/status` 정상. 휴대폰 브라우저의 health `ok / mock`은 사용자 확인.
 - `expo install --check`는 최신 권장 버전과 14개 차이로 실패했습니다. npm 설치 audit는 moderate 10건을 보고했습니다. 자동 업그레이드·audit fix는 하지 않았으며, 이후 의존성 갱신 시 별도 회귀 검증이 필요합니다.
-- 휴대폰 Expo Go 연결과 시연모드 표시는 사용자 확인. 로컬 API에 휴대폰 요청 HTTP 200 확인. 실제 AI 전환·모델 호출 및 실기기 실제 그림 생성은 키 입력 후 확인 필요.
+- 휴대폰 Expo Go 연결과 최초 시연모드 표시는 사용자 확인. 로컬 API에 휴대폰 요청 HTTP 200 확인. 이후 로컬 실제 AI 전환 완료, 모델 접근·합성 텍스트 응답 1회·합성 그림 생성 1회 및 이미지 디코딩 통과. 검증 결과는 Git 제외 `tmp/local-development/openai-verification.json`, 그림은 같은 폴더 `openai-smoke.png`입니다. 검증은 앱과 같은 SDK/모델 인자를 사용했으며 개발 DB에 검증용 대화·작품을 넣지 않았습니다. 실제 AI 모드에서 휴대폰 재로그인 및 앱 전체 그림일기 흐름은 별도 사용자 확인 필요.
 
 설정 방식은 [Expo 환경변수](https://docs.expo.dev/guides/environment-variables/)와 [동적 앱 설정](https://docs.expo.dev/workflow/configuration/), 설치 시 [SDK 58 문서](https://docs.expo.dev/versions/v58.0.0/)를 확인했습니다.
