@@ -3,12 +3,14 @@ import type {
   DiscussionSession,
   DiscussionSettings,
 } from "./types";
+import { PANEL_IDS, COUNCIL_STEPS, councilStep } from "./council";
 
 function session(value: unknown): DiscussionSession {
   if (!value || typeof value !== "object")
     throw new Error("생각방 응답 형식을 확인하지 못했어요.");
   const data = value as DiscussionSession;
-  const ids = ["blue", "amber", "violet"];
+  const modern = data.protocol_version === 2;
+  const ids = modern ? PANEL_IDS : ["blue", "amber", "violet"];
   if (
     typeof data.id !== "string" ||
     typeof data.topic !== "string" ||
@@ -19,9 +21,10 @@ function session(value: unknown): DiscussionSession {
     data.completed_turns < 0 ||
     !Number.isInteger(data.next_speaker_index) ||
     data.next_speaker_index < 0 ||
-    data.next_speaker_index > 2 ||
+    data.next_speaker_index > (modern ? COUNCIL_STEPS : 2) ||
     !Array.isArray(data.bots) ||
-    data.bots.length !== 3 ||
+    data.bots.length !== ids.length ||
+    (modern && data.phase !== councilStep(data).phase) ||
     !data.bots.every(
       (bot, i) =>
         bot?.id === ids[i] &&
@@ -35,7 +38,9 @@ function session(value: unknown): DiscussionSession {
         message &&
         typeof message.id === "string" &&
         typeof message.text === "string" &&
-        ["user", ...ids].includes(message.speaker) &&
+        ["user", ...(modern ? ["moderator"] : []), ...ids].includes(
+          message.speaker,
+        ) &&
         Number.isInteger(message.turn) &&
         Number.isFinite(message.created_at),
     )
@@ -49,7 +54,9 @@ function settings(value: unknown): DiscussionSettings {
   if (
     !value ||
     typeof value !== "object" ||
-    typeof (value as DiscussionSettings).show_history !== "boolean"
+    typeof (value as DiscussionSettings).show_history !== "boolean" ||
+    ((value as DiscussionSettings).reminder_enabled !== undefined &&
+      typeof (value as DiscussionSettings).reminder_enabled !== "boolean")
   )
     throw new Error("표시 설정을 읽지 못했어요.");
   return value as DiscussionSettings;
@@ -71,6 +78,7 @@ export function createNetworkDiscussionService(
     baseUrl: string;
     headers: () => Record<string, string>;
     fetch?: typeof fetch;
+    protocolVersion?: 1 | 2;
   },
 ): DiscussionService {
   async function request(
@@ -119,7 +127,9 @@ export function createNetworkDiscussionService(
     } catch (error) {
       if (controller.signal.aborted && !signal?.aborted)
         throw new Error(
-          "AI 응답이 늦어지고 있어요. 대화 이어하기로 다시 시도해 주세요.",
+          connection.protocolVersion === 2
+            ? "AI 응답이 늦어지고 있어요. 다시 시도를 눌러 주세요."
+            : "AI 응답이 늦어지고 있어요. 대화 이어하기로 다시 시도해 주세요.",
         );
       throw error;
     } finally {
@@ -138,18 +148,46 @@ export function createNetworkDiscussionService(
         await request(`/${encodeURIComponent(id)}`, "GET", undefined, signal),
       ),
     settings: async (signal) =>
-      settings(await request("/settings", "GET", undefined, signal)),
-    saveSettings: async (value) =>
-      settings(await request("/settings", "PATCH", value)),
-    prepare: async (topic, requestId, signal) =>
-      session(
+      settings(
         await request(
-          "/prepare",
-          "POST",
-          { topic, request_id: requestId },
+          connection.protocolVersion === 2
+            ? "/settings?protocol_version=2"
+            : "/settings",
+          "GET",
+          undefined,
           signal,
         ),
       ),
+    saveSettings: async (value) => {
+      const saved = settings(await request("/settings", "PATCH", value));
+      if (
+        value.reminder_enabled !== undefined &&
+        saved.reminder_enabled !== value.reminder_enabled
+      )
+        throw new Error(
+          "서버에서 리마인더 설정을 확인하지 못했어요. 서버 업데이트 후 다시 시도해 주세요.",
+        );
+      return saved;
+    },
+    prepare: async (topic, requestId, signal) => {
+      const prepared = session(
+        await request(
+          "/prepare",
+          "POST",
+          {
+            topic,
+            request_id: requestId,
+            ...(connection.protocolVersion === 2
+              ? { protocol_version: 2 }
+              : {}),
+          },
+          signal,
+        ),
+      );
+      if (connection.protocolVersion === 2 && prepared.protocol_version !== 2)
+        throw new Error("마음 회의 서버를 업데이트하고 다시 시작해 주세요.");
+      return prepared;
+    },
     confirm: async (id, signal) =>
       session(
         await request(

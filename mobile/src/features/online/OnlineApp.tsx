@@ -551,7 +551,7 @@ export default function OnlineApp() {
                 (value, index) => (
                   <View key={value} style={{ flex: 1 }}>
                     <Button
-                      label={["공간", "생각방", "갤러리"][index]}
+                      label={["공간", "마음", "갤러리"][index]}
                       secondary={tab !== value}
                       onPress={() =>
                         value === "discussion"

@@ -58,10 +58,10 @@ export default function DiscussionRoute() {
   const service = useMemo(
     () =>
       local
-        ? createLocalDiscussionService(AsyncStorage)
+        ? createLocalDiscussionService(AsyncStorage, { protocolVersion: 2 })
         : createNetworkDiscussionService(
             account?.ai_mode === "mock" ? "mock" : "openai",
-            { baseUrl: API_URL, headers: authHeaders },
+            { baseUrl: API_URL, headers: authHeaders, protocolVersion: 2 },
           ),
     [account?.ai_mode],
   );
@@ -73,7 +73,7 @@ export default function DiscussionRoute() {
         style={[styles.screen, { justifyContent: "center", padding: 24 }]}
       >
         <ActivityIndicator />
-        <Copy>생각방을 열고 있어요…</Copy>
+        <Copy>마음 회의를 열고 있어요…</Copy>
       </SafeAreaView>
     );
   if (error || (!local && !account) || (local && !state.settings.nickname))

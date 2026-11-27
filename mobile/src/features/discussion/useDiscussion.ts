@@ -35,6 +35,7 @@ export function useDiscussion(service: DiscussionService) {
     resume: controller.resume,
     send: controller.send,
     saveHistory: controller.saveHistory,
+    saveReminder: controller.saveReminder,
     reload: controller.reload,
   };
 }

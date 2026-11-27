@@ -8,7 +8,8 @@ import React, {
 } from "react";
 import type { AppState } from "../types";
 import { initialState, restore } from "./model";
-const KEY = "maeum2nd.local.v1";
+import { STORAGE_PREFIX } from "../config/environment";
+const KEY = `${STORAGE_PREFIX}.local.v1`;
 type Store = {
   state: AppState;
   update: (fn: (s: AppState) => AppState) => void;

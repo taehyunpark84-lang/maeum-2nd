@@ -1,7 +1,8 @@
 """채팅의 공통 기억과 별도로, 이번 작품에 담을 최근 이야기를 준비합니다."""
 from sqlalchemy import select, func
 from .db import Db, Job, Diary, Message, UserMemory
-from .shared_history import message_query, places_by_session, context_items
+from .shared_history import message_query, places_by_session
+from .art_text import clean_art_story
 from . import ai
 
 
@@ -13,7 +14,8 @@ def recent_items(rows, origins, max_chars=24000):
             break
         selected.append(row)
         size += len(row.text)
-    return context_items(list(reversed(selected)), origins)
+    return [{'role':row.role, 'content':clean_art_story(row.text), 'place_id':origins[row.session_id]}
+            for row in reversed(selected)]
 
 
 async def prepare_story(user, include_source=False):
@@ -29,7 +31,7 @@ async def prepare_story(user, include_source=False):
         source_end = db.scalar(query.with_only_columns(func.max(Message.id))) or 0
         latest_user = db.scalar(query.where(Message.role == 'user', Message.id <= source_end).order_by(Message.id.desc()).limit(1))
         snapshot = latest_user.id if latest_user else through
-        previous_story = last.approved_summary if last else ''
+        previous_story = clean_art_story(last.approved_summary) if last else ''
         # 소비 체크포인트와 열람 범위를 분리합니다. 재해석 작품은 원래 범위를 재사용합니다.
         previous_range = (last.source_after, last.source_end) if last else (None, None)
         first_new = db.scalar(query.where(Message.role == 'user', Message.id > through, Message.id <= source_end)
@@ -44,9 +46,9 @@ async def prepare_story(user, include_source=False):
         background = list(db.scalars(query.where(Message.id <= through).order_by(Message.id.desc()).limit(12)))
         origins = places_by_session(db, user)
         memory = db.get(UserMemory, user)
-        reference = memory.summary if memory else ''
+        reference = clean_art_story(memory.summary) if memory else ''
     decision = await ai.select_art_story(user, recent_items(new_rows, origins),
         recent_items(background, origins, 8000), reference, previous_story)
     if not decision.has_new_material and previous_story:
         return result(previous_story, previous_range)
-    return result(decision.story.strip(), source_range)
+    return result(clean_art_story(decision.story), source_range)

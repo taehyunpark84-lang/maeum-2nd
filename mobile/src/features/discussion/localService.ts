@@ -6,7 +6,17 @@ import type {
   DiscussionSettings,
 } from "./types";
 
-export const DISCUSSION_LOCAL_KEY = "maeum2nd.discussion.mock.v1";
+import { STORAGE_PREFIX } from "../../config/environment";
+import {
+  PANEL_IDS,
+  PANELS,
+  COUNCIL_STEPS,
+  councilStep,
+  councilDemoReply,
+  annotateCouncilMessages,
+} from "./council";
+
+export const DISCUSSION_LOCAL_KEY = `${STORAGE_PREFIX}.discussion.mock.v1`;
 
 type Storage = {
   getItem(key: string): Promise<string | null>;
@@ -94,6 +104,8 @@ const integer = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 
 function isSession(value: unknown): value is DiscussionSession {
+  const modern = object(value) && value.protocol_version === 2;
+  const ids = modern ? PANEL_IDS : BOT_IDS;
   if (
     !object(value) ||
     !shortString(value.id, 100) ||
@@ -102,9 +114,9 @@ function isSession(value: unknown): value is DiscussionSession {
     !integer(value.revision) ||
     !integer(value.completed_turns) ||
     !integer(value.next_speaker_index) ||
-    value.next_speaker_index > 2 ||
+    value.next_speaker_index > (modern ? COUNCIL_STEPS : 2) ||
     !Array.isArray(value.bots) ||
-    value.bots.length !== 3 ||
+    value.bots.length !== ids.length ||
     !Array.isArray(value.messages) ||
     value.messages.length > MAX_MESSAGES
   )
@@ -113,7 +125,7 @@ function isSession(value: unknown): value is DiscussionSession {
     !value.bots.every(
       (bot, index) =>
         object(bot) &&
-        bot.id === BOT_IDS[index] &&
+        bot.id === ids[index] &&
         shortString(bot.name, 80) &&
         shortString(bot.position, 200) &&
         shortString(bot.description, 1000),
@@ -125,7 +137,9 @@ function isSession(value: unknown): value is DiscussionSession {
       (message) =>
         object(message) &&
         shortString(message.id, 100) &&
-        ["user", ...BOT_IDS].includes(String(message.speaker)) &&
+        ["user", ...(modern ? ["moderator"] : []), ...ids].includes(
+          String(message.speaker),
+        ) &&
         shortString(message.text) &&
         integer(message.turn) &&
         message.turn >= 1 &&
@@ -140,6 +154,14 @@ function isSession(value: unknown): value is DiscussionSession {
   const botCount = messages.filter(
     (message) => message.speaker !== "user",
   ).length;
+  if (modern)
+    return (
+      value.phase ===
+      councilStep({
+        next_speaker_index: value.next_speaker_index,
+        completed_turns: value.completed_turns,
+      }).phase
+    );
   return (
     botCount % 3 === value.next_speaker_index &&
     Math.floor(botCount / 3) === value.completed_turns
@@ -162,6 +184,8 @@ function parse(raw: string | null): Document {
     !(data.activeId === null || shortString(data.activeId, 100)) ||
     !object(data.settings) ||
     typeof data.settings.show_history !== "boolean" ||
+    (data.settings.reminder_enabled !== undefined &&
+      typeof data.settings.reminder_enabled !== "boolean") ||
     !Array.isArray(data.sessions) ||
     data.sessions.length > MAX_SESSIONS ||
     !data.sessions.every(isSession) ||
@@ -329,7 +353,7 @@ function demoReply(session: DiscussionSession) {
 
 export function createLocalDiscussionService(
   storage: Storage,
-  options: { delayMs?: number } = {},
+  options: { delayMs?: number; protocolVersion?: 1 | 2 } = {},
 ): DiscussionService {
   let state: Document | null = null;
   let loading: Promise<Document> | null = null;
@@ -441,17 +465,35 @@ export function createLocalDiscussionService(
       return clone(sessionIn(await read(signal), sessionId));
     },
     async settings(signal) {
-      return clone((await read(signal)).settings);
+      const settings = clone((await read(signal)).settings);
+      return options.protocolVersion === 2
+        ? { ...settings, reminder_enabled: settings.reminder_enabled ?? true }
+        : settings;
     },
     saveSettings(value) {
-      if (typeof value.show_history !== "boolean")
+      if (
+        typeof value.show_history !== "boolean" ||
+        (value.reminder_enabled !== undefined &&
+          typeof value.reminder_enabled !== "boolean")
+      )
         return Promise.reject(
           new LocalDiscussionError(400, "기록 표시 설정이 올바르지 않아요."),
         );
-      return mutate(
-        (document) =>
-          (document.settings = { show_history: value.show_history }),
-      );
+      return mutate((document) => {
+        if (
+          value.reminder_enabled !== undefined &&
+          (document.settings.reminder_enabled ?? true) !==
+            value.reminder_enabled
+        ) {
+          document.sessions
+            .filter(
+              (session) =>
+                session.state === "active" && session.protocol_version === 2,
+            )
+            .forEach((session) => session.revision++);
+        }
+        return (document.settings = { ...document.settings, ...value });
+      });
     },
     async prepare(rawTopic, requestId, signal) {
       const topic = checkedText(rawTopic);
@@ -471,12 +513,15 @@ export function createLocalDiscussionService(
         const session: DiscussionSession = {
           id: id(),
           topic,
-          bots: roles(topic),
+          bots: options.protocolVersion === 2 ? clone(PANELS) : roles(topic),
           messages: [],
           next_speaker_index: 0,
           completed_turns: 0,
           revision: 0,
           state: "draft",
+          ...(options.protocolVersion === 2
+            ? { protocol_version: 2 as const, phase: "opening" as const }
+            : {}),
         };
         document.sessions.push(session);
         document.requests[key] = { sessionId: session.id, signature: topic };
@@ -513,6 +558,15 @@ export function createLocalDiscussionService(
         if (prior) return prior;
         const session = sessionIn(document, sessionId, true);
         capacity(session);
+        if (session.protocol_version === 2) {
+          if (session.next_speaker_index !== COUNCIL_STEPS)
+            throw new LocalDiscussionError(
+              409,
+              "대표 패널의 질문이 끝난 뒤에 답변할 수 있어요.",
+            );
+          session.next_speaker_index = 0;
+          session.phase = "opening";
+        }
         session.messages.push({
           id: id(),
           speaker: "user",
@@ -537,7 +591,15 @@ export function createLocalDiscussionService(
           409,
           "새 의견이 들어왔어요. 최신 대화를 불러온 뒤 이어갈게요.",
         );
-      const text = demoReply(snapshot);
+      if (
+        snapshot.protocol_version === 2 &&
+        councilStep(snapshot).phase === "awaiting_user"
+      )
+        throw new LocalDiscussionError(409, "사용자의 답변을 기다리고 있어요.");
+      const text =
+        snapshot.protocol_version === 2
+          ? councilDemoReply(snapshot)
+          : demoReply(snapshot);
       await delay(delayMs, signal);
       return mutate((draft) => {
         const existing = remembered(draft, `reply:${requestId}`, signature);
@@ -551,13 +613,28 @@ export function createLocalDiscussionService(
         capacity(session);
         session.messages.push({
           id: id(),
-          speaker: session.bots[session.next_speaker_index].id,
+          speaker:
+            session.protocol_version === 2
+              ? councilStep(session).speaker
+              : session.bots[session.next_speaker_index].id,
           text,
           turn: session.completed_turns + 1,
           created_at: Date.now() / 1000,
         });
-        session.next_speaker_index = (session.next_speaker_index + 1) % 3;
-        if (session.next_speaker_index === 0) session.completed_turns++;
+        session.next_speaker_index =
+          session.protocol_version === 2
+            ? session.next_speaker_index + 1
+            : (session.next_speaker_index + 1) % 3;
+        if (
+          session.protocol_version === 2
+            ? session.next_speaker_index === COUNCIL_STEPS
+            : session.next_speaker_index === 0
+        )
+          session.completed_turns++;
+        if (session.protocol_version === 2)
+          session.phase = councilStep(session).phase;
+        if (session.protocol_version === 2)
+          session.messages = annotateCouncilMessages(session.messages);
         session.revision++;
         draft.requests[`reply:${requestId}`] = { sessionId, signature };
         return session;

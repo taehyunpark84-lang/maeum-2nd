@@ -159,6 +159,7 @@ class DiscussionSession(Base):
     request_id: Mapped[str] = mapped_column(String(64))
     topic: Mapped[str] = mapped_column(Text)
     bots: Mapped[str] = mapped_column(Text)
+    protocol_version: Mapped[int] = mapped_column(Integer, default=1, server_default='1')
     state: Mapped[str] = mapped_column(String(10), default='draft')
     next_speaker_index: Mapped[int] = mapped_column(Integer, default=0)
     completed_turns: Mapped[int] = mapped_column(Integer, default=0)
@@ -187,4 +188,5 @@ class DiscussionSettings(Base):
     __tablename__ = 'discussion_settings'
     user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), primary_key=True)
     show_history: Mapped[bool] = mapped_column(Boolean, default=False, server_default='0')
+    reminder_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default='1')
 
