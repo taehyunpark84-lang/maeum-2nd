@@ -512,3 +512,12 @@
 - Expo SDK 58 공식 설정 문서 확인. 기존 scripts/build-test-apk.ps1에 prebuild 단계가 포함되어 있음 확인. docs/ANDROID_APK_TEST.md에 Gradle 직접 빌드 시 선행 prebuild 필요사항 기록.
 - 검증: 생성 결과 시각 확인, Expo getConfig로 실제 경로 해석 확인, PNG 헤더·정사각형 크기·Pillow 전체 디코딩·불투명 RGB 확인. 초기 sharp 디코딩 시도는 모듈 미설치로 실패하여 기존 Pillow로 대체 검증. npm.cmd run typecheck 및 npm.cmd run lint 성공(경고 0), git diff --check 통과.
 - APK 빌드·휴대폰 설치·런처 표시·iOS 빌드는 미실시. 서버/Google Cloud 업로드 없음. 사용자가 기존 빌드 스크립트로 새 APK를 만든 후 업데이트 설치하여 표시를 확인할 예정.
+
+## 2026-11-27 — 개발 전용 worktree 분리 준비
+- 개발 경로: `C:\Users\smhrd1\.codex\worktrees\70e0\maeum-latest`. 최초 detached HEAD 및 변경 없음 확인 후, 기존 `codex/development` 브랜치로 전환. 새 브랜치는 만들지 않음. 분리 기준 커밋은 `e3ddca1caea8ae46beaaa213539c40a011be449a`.
+- 원본 `C:\dev\maeum-latest`는 `main` 유지. 미커밋 문서 3개(`MAEUM_2ND_RUNBOOK.md`, `docs/PROGRESS.md`, `mobile/README.md`) 및 미추적 `scripts/use-node.ps1`은 읽기 전용 상태 확인만 수행하고 수정·이동·커밋하지 않음.
+- 루트 AGENTS.md와 START_HERE.md → docs/01~05 필수 문서를 순서대로 읽고, 목업 01·09를 직접 열어 확인. 기존 앱·백엔드 소스와 lockfile이 존재하므로 초기 패키지 설명의 “앱 코드 없음”은 현재 상태와 구분. 과거 문서의 실행·검증 완료 기록도 이 worktree의 준비 완료를 뜻하지 않음.
+- 미준비: 로컬 백엔드 가상환경(`backend/.venv`)과 모바일 패키지(`mobile/node_modules`) 없음. 잠금 파일만 존재하며 패키지 설치·런타임 버전/호환성 검증 미실시. 로컬 API와 그림 작업자는 이번 작업에서 실행·검증하지 않음.
+- 미준비: `backend/storage` 및 `backend/data` 없음. 개발 DB 생성·마이그레이션·연결 검증 미실시. `backend/.env`, `mobile/.env` 없음(예시 파일만 존재). 개발 전용 DB 경로·서버 주소·AI 모드는 후속 환경 준비에서 설정 필요.
+- 원본의 환경 파일·API 키·DB·이미지·node_modules 복사 없음. 기존 Git 추적 이미지 외 추가 자산 없음. 클라우드 서버·운영 그림 작업자·DB·배포 설정 변경 및 외부 서비스 접속 없음.
+- 이번 범위는 Git 분리 확인과 이 문서 기록만이며 개발 서버 실행·기능 구현·패키지 설치·앱 테스트·빌드·GitHub 푸시 미실시. 후속 개발 환경 준비 및 기능 지시 대기.
