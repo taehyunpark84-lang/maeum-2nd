@@ -25,6 +25,27 @@ React Native + Expo + TypeScript 앱입니다. 기본 모드는 FastAPI 서버�
 
 ## 시작하기 (PowerShell)
 
+### C:\dev\maeum-latest에서 npm.cmd를 찾지 못할 때
+
+이 PC에는 Node.js 24.21.0이 설치되어 있지만 기본 nvm shim에 활성 버전이 없어 `npm.cmd`를 찾지 못할 수 있습니다. 아래 명령은 현재 PowerShell 창의 PATH에 실제 Node.js 설치 경로를 추가합니다. 새 창에서는 다시 실행하세요. 기존 `.env`는 유지합니다.
+
+```powershell
+cd C:\dev\maeum-latest\mobile
+. ..\scripts\use-node.ps1
+npm.cmd ci
+npm.cmd start -- --clear
+```
+
+스크립트 실행 정책으로 차단되면 정책 변경 없이 아래 한 줄로 같은 경로를 지정할 수 있습니다.
+
+```powershell
+$env:Path = "$env:USERPROFILE\AppData\Local\Author Software\nvm\installs\v24.21.0;$env:Path"
+```
+
+다른 설치 경로를 사용한다면 `. ..\scripts\use-node.ps1 -NodeHome '실제 Node.js 폴더'`로 지정합니다. 이 복구는 시스템·사용자 환경변수나 nvm 설정을 변경하지 않습니다.
+
+### 이전 PC 실행 예시
+
 ```powershell
 cd 'C:\최종프로젝트1\maeum-frontend\mobile'
 npm.cmd ci

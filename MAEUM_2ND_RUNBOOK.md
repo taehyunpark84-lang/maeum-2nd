@@ -1,5 +1,24 @@
 # maeum-2nd 로컬 실행 안내
 
+## 2026-11-24 새 체크아웃의 Node.js 경로 복구
+
+`C:\dev\maeum-latest`에서 `npm.cmd`를 찾지 못하면, 이미 설치된 Node.js 24.21.0의 경로를 현재 PowerShell 창에 먼저 추가합니다. 시스템 PATH와 nvm 설정은 변경하지 않습니다.
+
+```powershell
+cd C:\dev\maeum-latest\mobile
+. ..\scripts\use-node.ps1
+npm.cmd ci
+npm.cmd start -- --clear
+```
+
+스크립트 실행 정책으로 차단되는 경우에는 `. ..\scripts\use-node.ps1` 대신 아래 한 줄을 실행합니다. 새 PowerShell 창에서도 경로 설정을 반복해야 합니다.
+
+```powershell
+$env:Path = "$env:USERPROFILE\AppData\Local\Author Software\nvm\installs\v24.21.0;$env:Path"
+```
+
+이하 `C:\maeum-2nd` 경로 및 실행 결과는 이전 체크아웃의 기록입니다. 현재 체크아웃의 검증 결과는 `docs/PROGRESS.md`를 확인하세요.
+
 > 2026-11-22 클라우드 전환: 모바일 .env는 https://34.158.202.133을 사용합니다. API·그림 작업자는 VM에서 실행되므로 현재 앱 사용에는 아래 로컬 API/작업자 실행이 필요하지 않습니다. 모바일 폴더에서 npm.cmd start -- --clear로 Expo만 시작하세요. 현재 VM은 mock AI입니다. 최신 상태는 [VM 실행 안내](docs/MAEUM_VM_RUNBOOK.md)를 따르며 아래는 로컬 실행 복구용 기록입니다.
 
 작업 경로: `C:\maeum-2nd` (Windows). 2026-11-21 최초 독립 이전.

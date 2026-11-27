@@ -512,3 +512,28 @@
 - Expo SDK 58 공식 설정 문서 확인. 기존 scripts/build-test-apk.ps1에 prebuild 단계가 포함되어 있음 확인. docs/ANDROID_APK_TEST.md에 Gradle 직접 빌드 시 선행 prebuild 필요사항 기록.
 - 검증: 생성 결과 시각 확인, Expo getConfig로 실제 경로 해석 확인, PNG 헤더·정사각형 크기·Pillow 전체 디코딩·불투명 RGB 확인. 초기 sharp 디코딩 시도는 모듈 미설치로 실패하여 기존 Pillow로 대체 검증. npm.cmd run typecheck 및 npm.cmd run lint 성공(경고 0), git diff --check 통과.
 - APK 빌드·휴대폰 설치·런처 표시·iOS 빌드는 미실시. 서버/Google Cloud 업로드 없음. 사용자가 기존 빌드 스크립트로 새 APK를 만든 후 업데이트 설치하여 표시를 확인할 예정.
+
+## 2026-11-24 — 새 체크아웃 npm.cmd 실행 오류 복구
+- 대상: C:\dev\maeum-latest. 기본 PATH의 nvm shim에는 활성 Node 버전이 없고 npm.cmd가 없어 사용자 스크린샷의 오류 재현. 실제 Node.js는 사용자 AppData/Local/Author Software/nvm/installs/v24.21.0에 설치되어 있음 확인.
+- scripts/use-node.ps1 추가: 실제 설치 경로의 node.exe/npm.cmd 존재를 확인하고 현재 PowerShell PATH에만 추가. 시스템/사용자 PATH, nvm 설정 및 기존 .env 변경 없음. README와 최상위 실행 안내에 새 체크아웃 경로 및 실행 정책 변경 없는 한 줄 대안 기록.
+- 기존 Node v24.21.0 / npm 11.19.0 실행 확인. Expo SDK 58 공식 버전 문서 확인. package.json 및 package-lock.json 변경 없음.
+- 최초 제한 환경 npm ci는 node_modules 하위 mkdir EPERM으로 실패. 권한을 확장해 npm.cmd ci --cache ..\tmp\npm-cache --no-audit --no-fund 재실행, 808개 패키지 설치 성공. npm의 eslint 지원 종료/esbuild 설치 스크립트 미승인 경고 표시; 자동 승인이나 버전 변경은 하지 않음.
+- npm.cmd run typecheck 및 npm.cmd run lint 성공(경고 0). CI=1 npm.cmd start -- --localhost --port 8081로 Metro 시작 및 Waiting on http://localhost:8081 로그 확인 후 검증 서버 종료.
+- 제한 환경 네트워크가 비활성화되어 Expo 온라인 버전 확인/DevTools 다운로드는 로컬 대체본 사용. /status HTTP 조회는 소켓 접근 제한으로 실패. 앱 번들 완성, 휴대폰 화면, 서버 API 연결 및 APK 빌드는 이번 작업에서 미검증. 실제 AI 호출 없음.
+
+## 2026-11-24 — 갤러리 이미지 공유 방식 제안·예상 시안
+- 사용자 요청 범위는 기존 화면 변경을 줄인 공유 방식 비교와 적용 예상 이미지 소개. 온라인 갤러리/작품 상세/사진첩 저장, 기존 로컬 공유 시연, 서버의 개인 작품·이미지 조회 경계를 확인. 실제 사용자 간 공유 기능은 이번에 구현하지 않음.
+- Android 공식 공유창, Google Photos 링크 공유, Spotify의 2026-09 공유 카드, Instagram 공개 콘텐츠·탭 사례를 확인하고 그림 파일 전송/마음 엽서/만료 가능한 링크/갤러리 내 함께 보는 작품 전환 4안을 비교.
+- 내장 image_gen으로 2개 비교 보드 생성 후 시각 확인. 기존 아이보리·초록·갈색 액자 스타일과 예시 작품 사용. 결과: output/gallery-sharing-proposals/01-image-and-postcard.png, 02-link-and-shared-gallery.png. 전체 프롬프트·참고 출처·공개 범위·제약은 같은 폴더 proposals.json에 기록.
+- UI 변경량과 서버 구현량을 구분. 파일·카드 공유는 추가 공개 서버 없이 가능하며, 링크/공동 전시실은 공개 전용 스냅샷과 만료·철회 또는 게시·조회·신고·차단 등 별도 서버 기능이 필요. 기존 인증 이미지 URL을 그대로 공유하는 방식은 제안하지 않음.
+- 제안 원칙: 기본 비공개, 공개 전 미리보기·명시 확인, 원본 대화·요약·감정·해석·인증 데이터 제외. 제목·시는 사용자 승인 범위만 포함. 링크는 소지자 열람 방식이며 다운로드된 사본은 철회로 회수되지 않음을 구분.
+- 앱 소스·의존성·서버·DB 변경 없음. 이미지는 AI 생성 예상 시안이며 실제 화면 캡처/기능 동작 검증이 아님. 이번 제안 작업에서는 타입 검사·린트·앱 빌드·기기 검증을 실행하지 않음.
+
+## 2026-11-24 — 프로필·친구 수락 기반 선택 작품 공유 검토
+- 사용자 제안에 대해 구현 난이도·제품 적절성 평가와 예상 이미지 제작만 수행. 실제 프로필/친구/공유 기능 구현 요청으로 확대하지 않음.
+- 기존 User 고유 username·nickname·로그인, 소유자 전용 Diary/이미지/썸네일, 온라인 갤러리·설정 및 인증 이미지 캐시 코드를 확인. 계정/액자형 UI 재사용 가능, 친구 관계와 선택 공유 및 서버 권한 검증은 신규 개발 필요로 평가.
+- 시안 가정: 수락 시 양방향 친구, 현재·앞으로 수락한 모든 친구에게 동일한 선택 작품만 제공. 기존·신규 작품 기본 비공개, 선택→미리보기→확인. 친구별 서로 다른 공개 작품 지정은 후속 확장으로 구분.
+- 원본 대화·요약·감정·해석은 제외. 비친구·신청 대기에는 작품과 썸네일 제공 금지. 개인 작품 수나 제목도 친구 화면에 노출하지 않는 방향. 공개 철회·친구 해제·차단 시 서버 접근 및 앱 화면/캐시 처리 필요, 저장·캡처된 사본 회수 불가를 구분.
+- Google Photos의 특정 사용자 공유, Apple 공유 앨범의 초대/승인 공식 안내 확인. 내 프로필/아이디 검색·신청·수락/친구 공개 작품 선택/친구 갤러리의 4화면을 내장 image_gen으로 2개 비교 보드로 생성하고 시각 확인.
+- 산출물: output/friend-gallery-proposal/01-profile-and-friends.png, 02-selection-and-friend-gallery.png. 전체 프롬프트·정책 가정·평가·참고 출처는 같은 폴더 proposal.json에 기록.
+- 앱 코드·의존성·DB·서버·배포 변경 없음. 실제 기능/실기기 검증이 아닌 AI 생성 예상 시안. 타입 검사·린트·테스트·빌드는 실행하지 않음.
