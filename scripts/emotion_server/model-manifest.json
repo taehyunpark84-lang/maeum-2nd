@@ -1,0 +1,21 @@
+{
+  "source": "User-provided teammate ZIP, maeum-2nd-main/scripts/emotion_server/koelectra_emotion6_multi_best",
+  "files": {
+    "config.json": {
+      "bytes": 1217,
+      "sha256": "9807309901fba374424cf6ddbc989c80cc6c263c6accd6a5e61c0c71085391fe"
+    },
+    "tokenizer.json": {
+      "bytes": 814948,
+      "sha256": "e701a43dd57d3e9a1fc8859289e54d395bf612d7e1c8cfafe03c753c1532e02b"
+    },
+    "tokenizer_config.json": {
+      "bytes": 352,
+      "sha256": "9cd988573a9588a6085cd353eeefa09b803dba75b03f58d0c1d302aad3078193"
+    },
+    "model.safetensors": {
+      "bytes": 451727976,
+      "sha256": "f68ee06edcf144b992cb703addef465b373bf054738e253e63d88f90d040b45c"
+    }
+  }
+}

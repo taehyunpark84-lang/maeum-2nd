@@ -130,6 +130,34 @@ class Diary(Base):
     image_file: Mapped[str] = mapped_column(String(150))
     created: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
 
+class SharedPost(Base):
+    __tablename__ = 'shared_posts'
+    __table_args__ = (UniqueConstraint('diary_id'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    diary_id: Mapped[str] = mapped_column(ForeignKey('diaries.id'), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    caption: Mapped[str] = mapped_column(Text, default='')
+    author_name: Mapped[str] = mapped_column(String(40))
+    anonymous: Mapped[bool] = mapped_column(default=True)
+    created: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+
+class PostReaction(Base):
+    __tablename__ = 'post_reactions'
+    post_id: Mapped[str] = mapped_column(ForeignKey('shared_posts.id'), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    reaction: Mapped[str] = mapped_column(String(12))
+    created: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+
+class PostComment(Base):
+    __tablename__ = 'post_comments'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    post_id: Mapped[str] = mapped_column(ForeignKey('shared_posts.id'), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+    author_name: Mapped[str] = mapped_column(String(40))
+    text: Mapped[str] = mapped_column(Text)
+    created: Mapped[float] = mapped_column(TIME_FLOAT, default=time.time)
+
 class Metric(Base):
     __tablename__ = 'metrics'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

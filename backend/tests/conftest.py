@@ -2,3 +2,4 @@
 import os
 
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
+os.environ['EMOTION_ART_HINT'] = '0'

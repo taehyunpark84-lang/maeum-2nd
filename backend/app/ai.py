@@ -7,13 +7,15 @@ from pathlib import Path
 from functools import lru_cache
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
-from .config import API_KEY, AI_MODE
+from .config import API_KEY, AI_MODE, EMOTION_MIN_CONFIDENCE, EMOTION_ART_HINT
 from .tuning import TEXT_PROFILES, IMAGE_OPTIONS, PROMPT_VERSION
 from .db import Db, Metric, Job, User
 from sqlalchemy import select
 from .art_direction import COMFORT, SUBJECTS, STYLES, choose_style, choose_direction
 from .chat_text import model_history
 from .art_text import clean_art_story
+from .emotion_classifier import classify_story
+from .emotion_art import decide as decide_art_emotion, hint_text as art_emotion_hint
 
 PROMPTS = Path(__file__).parent / 'prompts'
 PLACES = ('forest', 'ocean', 'cafe', 'temple', 'garden', 'cathedral')
@@ -142,6 +144,7 @@ class ArtPlan(BaseModel):
     poem: str = Field(max_length=4000)
     interpretation: str = Field(max_length=1500)
     image_prompt: str = Field(max_length=8000)
+    emotion: str = Field(default='', max_length=10)
 
 async def plan_art(user, approved_summary, gender=None):
     if AI_MODE == 'mock':
@@ -167,18 +170,43 @@ image_prompt는 이미지 모델에게 전달할 구체적인 미술 연출 지�
     instructions += '\n' + visual_brief
     instructions += '\n대화의 핵심 대상과 감정에 적합한 화풍을 다음 후보에서 하나 선택하고, style에 후보 문자열을 그대로 기록하라. 무작위 선택보다 이야기와의 적합성을 우선한다:\n' + json.dumps(available_styles, ensure_ascii=False)
     instructions += '\n이번에 승인한 이야기만 작품의 중심으로 삼는다. 같은 이야기라도 구도/배색/표현 방식을 새롭게 구성하되 핵심 인물·동물·소재를 유지한다. 최근 화풍 기록은 표현의 다양성을 위한 참고자료다:\n' + json.dumps(recent_styles, ensure_ascii=False)
-    response = await client().responses.parse(**TEXT_PROFILES['art'], instructions=instructions,
-        input=clean_art_story(approved_summary), text_format=ArtPlan, store=False)
-    if response.status != 'completed' or response.output_parsed is None:
-        raise RuntimeError('작품 구상을 생성하지 못했습니다.')
-    record(user, 'art', TEXT_PROFILES['art'], started, response.usage.model_dump() if response.usage else {})
-    plan = response.output_parsed
-    # 후보 밖 응답도 기존 style 필드와 호환. 식별 가능한 대상을 지키는 연출 지침은
-    # 기획 모델뿐 아니라 실제 이미지 모델에도 반드시 전달합니다.
-    if plan.style not in available_styles:
-        plan.style = choose_style(recent_styles)
-    plan.image_prompt = visual_brief + '\n화풍: ' + plan.style + '\n' + clean_art_story(plan.image_prompt)
-    return plan
+    instructions += ('\n승인한 이야기에서 가장 두드러진 감정 하나를 emotion에 기록한다. 기쁨·분노·상처·슬픔·당황·불안 중 하나만 쓰고, '
+        '이야기에 근거가 없거나 판단이 어려우면 빈 문자열로 둔다. 이 판단은 이야기 내용만 근거로 하며 화풍·구도 선택과는 별개다.')
+    classifier_started = time.perf_counter()
+    classifier_task = asyncio.create_task(classify_story(clean_art_story(approved_summary))) if EMOTION_ART_HINT else None
+    try:
+        response = await client().responses.parse(**TEXT_PROFILES['art'], instructions=instructions,
+            input=clean_art_story(approved_summary), text_format=ArtPlan, store=False)
+        if response.status != 'completed' or response.output_parsed is None:
+            raise RuntimeError('작품 구상을 생성하지 못했습니다.')
+        record(user, 'art', TEXT_PROFILES['art'], started, response.usage.model_dump() if response.usage else {})
+        plan = response.output_parsed
+        # 후보 밖 응답도 기존 style 필드와 호환. 식별 가능한 대상을 지키는 연출 지침은
+        # 기획 모델뿐 아니라 실제 이미지 모델에도 반드시 전달합니다.
+        if plan.style not in available_styles:
+            plan.style = choose_style(recent_styles)
+        plan.image_prompt = visual_brief + '\n화풍: ' + plan.style + '\n' + clean_art_story(plan.image_prompt)
+        if classifier_task:
+            plan.image_prompt += await emotion_for_art(user, plan, await classifier_task, classifier_started)
+        return plan
+    finally:
+        if classifier_task is not None:
+            if not classifier_task.done():
+                classifier_task.cancel()
+            await asyncio.gather(classifier_task, return_exceptions=True)
+
+
+async def emotion_for_art(user, plan, classifier, started):
+    use, reason = decide_art_emotion(classifier, plan.emotion, EMOTION_MIN_CONFIDENCE)
+    try:
+        record(user, 'emotion_art', {
+            'model': 'koelectra-emotion6', 'used': use, 'reason': reason,
+            'classifier_emotion': classifier['emotion'] if classifier else '',
+            'classifier_confidence': classifier['confidence'] if classifier else 0,
+            'gpt_emotion': plan.emotion}, started)
+    except Exception as exc:
+        print('emotion_art:', type(exc).__name__, flush=True)
+    return art_emotion_hint(plan.emotion.strip()) if use else ''
 
 
 async def describe_art(user, place, plan, image_bytes):
