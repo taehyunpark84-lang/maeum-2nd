@@ -600,3 +600,14 @@
 - docs/PROGRESS.md 한 파일의 추가 기록 충돌을 해결. main의 11월 24일 Node 복구·공유 시안 검토 기록과 개발의 11월 27일 구현·검증 기록을 모두 보존. 기존 main 실행 안내와 Node 스크립트는 보존 커밋과 동일함을 확인.
 - 병합된 main 소스에서 백엔드 전체 64개(18.12초), 모바일 typecheck/lint 및 전체 테스트 56개 통과. 백엔드는 개발 worktree의 Python 도구를 사용하되 .env 읽기를 차단하고 별도 임시 테스트 DB로 검증. main의 서버 실행·DB 마이그레이션·실제 AI 호출·휴대폰 검증은 수행하지 않음.
 - 환경 파일·API 키·사용자 DB·설치 의존성 복사 없음. 기존 개발/운영 프로세스·클라우드 서버·그림 작업자·DB·배포 설정 변경 없음. GitHub 푸시 미실시. 운영 반영은 별도 배포 단계이며 이번 작업은 로컬 코드 병합까지.
+
+## 2026-11-27 — 팀원 변경 검토 브랜치와 PC 로컬 환경
+- 사용자 요청에 따라 최신 main `d51eab4782130c9ced90a138c92796dbc4e70abc`에서 `codex/teammate-review` 브랜치와 별도 worktree `C:\dev\maeum-review` 생성. 원본 main의 미커밋 `docs/PROGRESS.md`와 미추적 `docs/DEPLOYMENT_2026_11_27.md`는 이동·수정·커밋하지 않음. 앱/백엔드 기능 소스와 기존 lockfile 변경 없음.
+- Node 24.21.0/npm 11.19.0으로 모바일 808개 패키지 설치, Python 3.14.7 독립 venv에 기존 lockfile의 백엔드 39개 패키지 설치. 기존 환경·키·DB·node_modules 복사 없음. Git 제외 환경 파일을 새로 작성하고 `AI_MODE=mock`, 모바일 API 모드/로컬 개발 분리 플래그 적용.
+- 검토용 SQLite `C:\dev\maeum-review\backend\storage\maeum-development.db` 새 생성, Alembic h117_mind_council 및 schema check 통과. 최초 업무 테이블 16개·업무 데이터 0건, SQLite integrity/foreign_key_check 정상. 테스트는 .env 읽기를 차단하고 별도 임시 DB에서 실행.
+- API/독립 그림 작업자/Expo를 숨김 프로세스로 실제 기동. localhost/LAN `http://172.30.1.18:8000/health` HTTP 200 `ok/mock`, Metro 상태 정상. Android 개발 번들 1,661 모듈 생성 성공. Expo 매니페스트의 프로젝트 경로 `C:\dev\maeum-review\mobile` 확인. PID·로그·QR은 Git 제외 `tmp/team-review`에 보관. 방화벽/운영 클라우드 설정 변경 없음.
+- 사용자 선택에 따라 PC 서버 + 휴대폰 Expo Go 방식 사용. 사용자가 QR 스캔 후 로그인 또는 공간 화면 표시를 확인. 기기 전체 그림일기/키보드/접근성·iOS·실제 AI 호출은 미검증. 현재 AI·감정 해석·그림 생성은 시연이며 실제 키/유료 호출 없음.
+- 검증: pip check, 백엔드 전체 64개(22.66초), 모바일 typecheck/lint 및 전체 테스트 56개 통과. Expo 권장 버전 검사는 잠금된 패키지와 현재 권장 패치 14개 차이로 실패. 자동 업그레이드하지 않음. 앱/서버 기능 구현이나 팀원 기능 테스트로 보고하지 않음.
+- `C:\dev\team-source`를 읽기 전용 비교. ZIP의 Git 객체는 별도 로컬 임시 저장소에서만 검사했으며 양쪽 기록의 공통 조상 없음 확인. 환경 비밀값·DB·생성 이미지·설치/빌드/캐시 제외, UTF-8 BOM/CRLF 차이 분리. 최신 637개/팀원 629개, 바이트 동일 76개·형식만 다름 510개·내용 다름 24개·최신에만 27개·팀원에만 19개. 실질 검토 대상 70개(Expo 자동 생성 파일 1개 포함)의 전체 목록·해시·텍스트 차이 작성.
+- `docs/TEAM_REVIEW_LOCAL.md`에 재실행/휴대폰 연결, `docs/TEAM_REVIEW_FILES.md`에 전체 파일 차이, `docs/TEAM_REVIEW_DECISIONS.md`에 12개 기능별 선택표·연결 관계·검증 한계 기록. 모든 선택은 미정. 마음회의/그림 내부 표시 제거/개발 저장 키와 팀원 피드·상담·감정 참고가 겹치는 지점, DB 마이그레이션 head 분기 확인.
+- 팀원 코드 복사·병합/모델 실행 없음. 사용자가 항목별로 선택한 후에만 선택 변경을 반영할 예정. main 병합·GitHub 푸시·클라우드 배포 없음.
